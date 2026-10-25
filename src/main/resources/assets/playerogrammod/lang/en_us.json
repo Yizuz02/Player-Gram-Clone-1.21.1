@@ -28,5 +28,7 @@
   "playerogrammod.configuration.extraLibraryPath": "Extra Library Path",
   "playerogrammod.configuration.startupTimeoutSeconds": "Startup Timeout (seconds)",
   "playerogrammod.configuration.requestTimeoutSeconds": "Request Timeout (seconds)",
-  "playerogrammod.configuration.webUi": "Enable Web UI"
+  "playerogrammod.configuration.webUi": "Enable Web UI",
+
+  "item.playerogrammod.lantern_ring": "Lantern Ring"
 }

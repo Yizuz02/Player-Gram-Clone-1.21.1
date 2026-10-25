@@ -1,5 +1,7 @@
 package net.yizuz.playerogrammod;
 
+import net.minecraft.world.item.CreativeModeTabs;
+import net.yizuz.playerogrammod.item.ModItems;
 import org.slf4j.Logger;
 
 import com.mojang.logging.LogUtils;
@@ -33,6 +35,8 @@ public class PlayerOGramMod {
 
         NeoForge.EVENT_BUS.register(this);
 
+        ModItems.register(modEventBus);
+
         // Register the item to a creative tab
         modEventBus.addListener(this::addCreative);
 
@@ -55,7 +59,9 @@ public class PlayerOGramMod {
 
     // Add the example block item to the building blocks tab
     private void addCreative(BuildCreativeModeTabContentsEvent event) {
-
+        if(event.getTabKey() == CreativeModeTabs.TOOLS_AND_UTILITIES) {
+            event.accept(ModItems.LANTERN_RING);
+        }
     }
 
     @SubscribeEvent

@@ -5,7 +5,6 @@ import com.mojang.brigadier.context.CommandContext;
 import net.minecraft.commands.CommandSourceStack;
 import net.minecraft.commands.Commands;
 import com.mojang.brigadier.arguments.StringArgumentType;
-import net.minecraft.ChatFormatting;
 import net.minecraft.network.chat.Component;
 import net.minecraft.server.MinecraftServer;
 import net.neoforged.bus.api.SubscribeEvent;
@@ -85,8 +84,6 @@ public final class PlayerOGramCommands {
         Component promptLine = Component.translatable("chat.type.text", source.getDisplayName(),
                 Component.literal(prompt.replace('\u00a7', '&')));
         source.sendSystemMessage(promptLine);
-        source.sendSuccess(() -> Component.literal(PREFIX + "Thinking…")
-                .withStyle(ChatFormatting.GRAY, ChatFormatting.ITALIC), false);
         List<LlamaClient.Message> messages = List.of(
                 new LlamaClient.Message("system", SystemPromptProvider.instance().get()),
                 new LlamaClient.Message("user", prompt));

@@ -26,7 +26,6 @@ public final class ConversationPipeline {
     public static final String BUSY_STATUS = "I'm still thinking about your previous message.";
     public static final String ERROR_STATUS =
             "I couldn't answer that just now. Check the server console for details.";
-    public static final String THINKING_STATUS = "Thinking…";
     public static final String GREETING_INSTRUCTION =
             "You have just come online in the server chat. Greet the players with one short, natural sentence. "
                     + "Do not use Markdown, lists, or headings.";
@@ -68,11 +67,6 @@ public final class ConversationPipeline {
         ConversationManager.Conversation conversation = conversations.get(playerId);
         if (!conversation.tryBegin()) {
             sendStatus(playerId, BUSY_STATUS);
-            return;
-        }
-
-        if (!sendStatus(playerId, THINKING_STATUS)) {
-            conversation.end();
             return;
         }
 

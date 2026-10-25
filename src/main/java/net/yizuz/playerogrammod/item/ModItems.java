@@ -11,7 +11,7 @@ public final class ModItems {
     public static final DeferredRegister.Items ITEMS = DeferredRegister.createItems(PlayerOGramMod.MOD_ID);
 
     public static final DeferredItem<LanternRingItem> LANTERN_RING = ITEMS.register(LANTERN_RING_ID,
-            () -> new LanternRingItem(new Item.Properties()));
+            () -> new LanternRingItem(new Item.Properties().stacksTo(1)));
 
     public static void register(IEventBus eventBus) {
         ITEMS.register(eventBus);

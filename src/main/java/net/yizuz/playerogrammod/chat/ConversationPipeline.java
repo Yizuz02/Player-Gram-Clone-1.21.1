@@ -38,17 +38,28 @@ public final class ConversationPipeline {
     private final ChatSink sink;
     private final Executor serverExecutor;
     private final BiPredicate<UUID, UUID> sessionCurrent;
+    private final Function<UUID, String> promptFor;
 
     public ConversationPipeline(ConversationManager conversations, SystemPromptProvider prompts,
                                 Function<List<LlamaClient.Message>, CompletableFuture<String>> completions,
                                 ChatSink sink, Executor serverExecutor,
                                 BiPredicate<UUID, UUID> sessionCurrent) {
+        this(conversations, prompts, completions, sink, serverExecutor, sessionCurrent,
+                ignored -> prompts.get());
+    }
+
+    public ConversationPipeline(ConversationManager conversations, SystemPromptProvider prompts,
+                                Function<List<LlamaClient.Message>, CompletableFuture<String>> completions,
+                                ChatSink sink, Executor serverExecutor,
+                                BiPredicate<UUID, UUID> sessionCurrent,
+                                Function<UUID, String> promptFor) {
         this.conversations = Objects.requireNonNull(conversations, "conversations");
         this.prompts = Objects.requireNonNull(prompts, "prompts");
         this.completions = Objects.requireNonNull(completions, "completions");
         this.sink = Objects.requireNonNull(sink, "sink");
         this.serverExecutor = Objects.requireNonNull(serverExecutor, "serverExecutor");
         this.sessionCurrent = Objects.requireNonNull(sessionCurrent, "sessionCurrent");
+        this.promptFor = Objects.requireNonNull(promptFor, "promptFor");
     }
 
     public void onPlayerMessage(UUID playerId, String prompt, UUID sessionToken) {
@@ -66,7 +77,7 @@ public final class ConversationPipeline {
         List<LlamaClient.Message> request = new ArrayList<>();
         CompletableFuture<String> future;
         try {
-            request.add(new LlamaClient.Message("system", prompts.get()));
+            request.add(new LlamaClient.Message("system", systemPrompt(playerId)));
             request.addAll(conversation.snapshot());
             request.add(new LlamaClient.Message("user", prompt));
             future = completions.apply(request);
@@ -95,10 +106,15 @@ public final class ConversationPipeline {
     }
 
     public CompletableFuture<String> generateIntroduction() {
+        return generateIntroduction(null);
+    }
+
+    public CompletableFuture<String> generateIntroduction(UUID playerId) {
         CompletableFuture<String> future;
         try {
+            String system = playerId == null ? prompts.get() : systemPrompt(playerId);
             List<LlamaClient.Message> request = List.of(
-                    new LlamaClient.Message("system", prompts.get()),
+                    new LlamaClient.Message("system", system),
                     new LlamaClient.Message("user", INTRODUCTION_INSTRUCTION));
             future = completions.apply(request);
         } catch (RuntimeException e) {
@@ -110,6 +126,11 @@ public final class ConversationPipeline {
                     new IllegalStateException("No completion future was returned."));
         }
         return future.thenApply(answer -> answer == null ? "" : answer.strip());
+    }
+
+    private String systemPrompt(UUID playerId) {
+        String prompt = promptFor.apply(playerId);
+        return prompt == null ? prompts.get() : prompt;
     }
 
     public void clearConversation(UUID playerId) {

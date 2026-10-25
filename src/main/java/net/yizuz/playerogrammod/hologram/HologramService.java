@@ -13,7 +13,10 @@ import net.minecraft.world.phys.HitResult;
 import net.minecraft.world.phys.Vec3;
 import net.yizuz.playerogrammod.entity.HologramEntity;
 import net.yizuz.playerogrammod.entity.ModEntities;
+import net.yizuz.playerogrammod.ring.RingConfig;
+import net.yizuz.playerogrammod.ring.RingConfigs;
 import net.yizuz.playerogrammod.ring.RingSessionManager;
+import net.yizuz.playerogrammod.ring.RingValidation;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -63,6 +66,10 @@ public final class HologramService {
     }
 
     public void spawn(MinecraftServer server, ServerPlayer owner, UUID token) {
+        this.spawn(server, owner, token, RingConfig.DEFAULT);
+    }
+
+    public void spawn(MinecraftServer server, ServerPlayer owner, UUID token, RingConfig config) {
         if (server == null || owner == null || token == null
                 || owner.isRemoved() || !owner.isAlive()) {
             return;
@@ -76,12 +83,14 @@ public final class HologramService {
         UUID ownerId = owner.getUUID();
         this.removeNow(ownerId);
 
+        RingConfig safe = RingValidation.sanitize(config);
         ServerLevel level = owner.serverLevel();
         HologramEntity entity = new HologramEntity(ModEntities.HOLOGRAM.get(), level);
         entity.setOwner(ownerId, token);
+        entity.setRingId(safe.hasRingId() ? safe.ringId() : null);
 
-        String skinName = settings.resolveSkinUsername(owner.getGameProfile().getName());
-        String displayName = settings.resolveDisplayName(skinName);
+        String skinName = safe.effectiveSkinUsername(owner.getGameProfile().getName());
+        String displayName = safe.effectiveDisplayName(owner.getGameProfile().getName());
         entity.setSkinUsername(skinName);
         entity.setDisplayName(displayName, settings.nameplate());
 
@@ -92,11 +101,38 @@ public final class HologramService {
             return;
         }
 
-        this.registry.put(ownerId, token, entity.getUUID());
+        this.registry.put(ownerId, token, entity.getUUID(), safe.ringId());
         this.levels.put(ownerId, level);
         this.applyProfile(entity, owner, skinName);
-        LOGGER.info("Spawned hologram {} for {} (skin={}, display={}).",
-                entity.getUUID(), ownerId, skinName, displayName);
+        LOGGER.info("Spawned hologram {} for {} (ring={}, skin={}, display={}).",
+                entity.getUUID(), ownerId, safe.ringId(), skinName, displayName);
+    }
+
+    public void updateConfig(UUID ownerId, RingConfig config) {
+        if (ownerId == null || config == null) {
+            return;
+        }
+        HologramRegistry.Entry entry = this.registry.get(ownerId);
+        ServerLevel level = this.levels.get(ownerId);
+        MinecraftServer current = this.server;
+        if (entry == null || level == null || current == null) {
+            return;
+        }
+        if (entry.ringId() != null && !entry.ringId().equals(config.ringId())) {
+            return;
+        }
+        ServerPlayer owner = current.getPlayerList().getPlayer(ownerId);
+        HologramEntity entity = find(level, entry.entityId());
+        if (owner == null || entity == null) {
+            return;
+        }
+
+        HologramSettings settings = HologramSettings.current();
+        RingConfig safe = RingValidation.sanitize(config);
+        String skinName = safe.effectiveSkinUsername(owner.getGameProfile().getName());
+        String displayName = safe.effectiveDisplayName(owner.getGameProfile().getName());
+        entity.setDisplayName(displayName, settings.nameplate());
+        this.applyProfile(entity, owner, skinName);
     }
 
     public void beginDespawn(UUID ownerId) {
@@ -159,7 +195,11 @@ public final class HologramService {
                 this.registry.remove(ownerId);
                 this.levels.remove(ownerId);
             }
-            this.spawn(server, owner, RingSessionManager.get().token(ownerId));
+            RingSessionManager.Session session = RingSessionManager.get().session(ownerId);
+            if (session == null) {
+                continue;
+            }
+            this.spawn(server, owner, session.token(), activeRingConfig(owner));
         }
     }
 
@@ -195,10 +235,24 @@ public final class HologramService {
             if (owner == null || owner.isRemoved() || !owner.isAlive() || entity == null) {
                 continue;
             }
-            String skinName = settings.resolveSkinUsername(owner.getGameProfile().getName());
-            entity.setDisplayName(settings.resolveDisplayName(skinName), settings.nameplate());
+            RingConfig config = activeRingConfig(owner);
+            String skinName = config.effectiveSkinUsername(owner.getGameProfile().getName());
+            String displayName = config.effectiveDisplayName(owner.getGameProfile().getName());
+            entity.setDisplayName(displayName, settings.nameplate());
             this.applyProfile(entity, owner, skinName);
         }
+    }
+
+    private static RingConfig activeRingConfig(ServerPlayer owner) {
+        RingSessionManager.Session session = RingSessionManager.get().session(owner.getUUID());
+        if (session == null || session.ringId() == null) {
+            return RingConfig.DEFAULT;
+        }
+        RingConfigs.Match match = RingConfigs.findUnique(owner, session.ringId());
+        if (match != null) {
+            return match.config();
+        }
+        return new RingConfig(session.ringId(), "", "", false, "");
     }
 
     private void removeAll() {

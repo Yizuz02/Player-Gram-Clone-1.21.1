@@ -47,6 +47,27 @@ class HologramRegistryTest {
     }
 
     @Test
+    void storesRingIdentityAlongsideTheOwnerAndEntity() {
+        HologramRegistry registry = new HologramRegistry();
+        UUID owner = UUID.randomUUID();
+        UUID token = UUID.randomUUID();
+        UUID entity = UUID.randomUUID();
+        UUID ring = UUID.randomUUID();
+
+        registry.put(owner, token, entity, ring);
+
+        assertEquals(ring, registry.get(owner).ringId());
+    }
+
+    @Test
+    void legacyPutWithoutRingIdentityStaysCompatible() {
+        HologramRegistry registry = new HologramRegistry();
+        UUID owner = UUID.randomUUID();
+        registry.put(owner, UUID.randomUUID(), UUID.randomUUID());
+        assertNull(registry.get(owner).ringId());
+    }
+
+    @Test
     void multipleOwnersStayIndependent() {
         HologramRegistry registry = new HologramRegistry();
         UUID first = UUID.randomUUID();

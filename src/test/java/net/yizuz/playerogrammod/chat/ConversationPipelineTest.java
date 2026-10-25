@@ -176,6 +176,26 @@ class ConversationPipelineTest {
     }
 
     @Test
+    void usesPlayerSpecificPromptForMessagesAndIntroduction() {
+        ConversationPipeline ringPipeline = new ConversationPipeline(manager, prompts, completions,
+                sink, Runnable::run, (playerId, sessionToken) -> true,
+                playerId -> playerId.equals(player) ? "ring prompt" : null);
+
+        completions.respond("hello back");
+        ringPipeline.onPlayerMessage(player, "hi", token);
+        assertEquals("ring prompt", completions.requests.get(0).get(0).content());
+
+        completions.respond("intro");
+        assertEquals("intro", ringPipeline.generateIntroduction(player).join());
+        assertEquals("ring prompt", completions.requests.get(1).get(0).content());
+
+        UUID other = UUID.randomUUID();
+        completions.respond("other answer");
+        ringPipeline.onPlayerMessage(other, "hi", token);
+        assertEquals(prompts.get(), completions.requests.get(2).get(0).content());
+    }
+
+    @Test
     void endedSessionSuppressesResponseAndHistory() {
         AtomicReference<UUID> currentToken = new AtomicReference<>(token);
         ConversationPipeline sessionPipeline = new ConversationPipeline(manager, prompts, completions,

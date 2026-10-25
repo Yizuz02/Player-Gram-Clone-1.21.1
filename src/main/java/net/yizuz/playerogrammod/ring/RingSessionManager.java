@@ -10,6 +10,9 @@ import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.CopyOnWriteArrayList;
 
 public final class RingSessionManager {
+    public record Session(UUID token, UUID ringId, String systemPrompt) {
+    }
+
     public interface Listener {
         void onSessionChanged(UUID playerId, UUID sessionToken, boolean active);
     }
@@ -17,7 +20,7 @@ public final class RingSessionManager {
     private static final Logger LOGGER = LoggerFactory.getLogger(RingSessionManager.class);
     private static final RingSessionManager INSTANCE = new RingSessionManager();
 
-    private final Map<UUID, UUID> sessions = new ConcurrentHashMap<>();
+    private final Map<UUID, Session> sessions = new ConcurrentHashMap<>();
     private final List<Listener> listeners = new CopyOnWriteArrayList<>();
 
     public static RingSessionManager get() {
@@ -25,11 +28,16 @@ public final class RingSessionManager {
     }
 
     public UUID activate(UUID playerId) {
+        return activate(playerId, null, null);
+    }
+
+    public UUID activate(UUID playerId, UUID ringId, String systemPrompt) {
         if (playerId == null) {
             return null;
         }
         UUID token = UUID.randomUUID();
-        UUID existing = sessions.putIfAbsent(playerId, token);
+        Session session = new Session(token, ringId, systemPrompt);
+        Session existing = sessions.putIfAbsent(playerId, session);
         if (existing != null) {
             return null;
         }
@@ -41,11 +49,11 @@ public final class RingSessionManager {
         if (playerId == null) {
             return false;
         }
-        UUID removed = sessions.remove(playerId);
+        Session removed = sessions.remove(playerId);
         if (removed == null) {
             return false;
         }
-        notifyChanged(playerId, removed, false);
+        notifyChanged(playerId, removed.token(), false);
         return true;
     }
 
@@ -53,12 +61,49 @@ public final class RingSessionManager {
         return playerId != null && sessions.containsKey(playerId);
     }
 
-    public UUID token(UUID playerId) {
+    public Session session(UUID playerId) {
         return playerId == null ? null : sessions.get(playerId);
     }
 
+    public UUID token(UUID playerId) {
+        Session session = session(playerId);
+        return session == null ? null : session.token();
+    }
+
+    public UUID ringId(UUID playerId) {
+        Session session = session(playerId);
+        return session == null ? null : session.ringId();
+    }
+
+    public String prompt(UUID playerId) {
+        Session session = session(playerId);
+        return session == null ? null : session.systemPrompt();
+    }
+
+    public boolean updatePrompt(UUID playerId, UUID ringId, String systemPrompt) {
+        Session current = session(playerId);
+        if (current == null || (ringId != null && !ringId.equals(current.ringId()))) {
+            return false;
+        }
+        return sessions.replace(playerId, current,
+                new Session(current.token(), current.ringId(), systemPrompt));
+    }
+
+    public boolean ringIdActiveElsewhere(UUID playerId, UUID ringId) {
+        if (ringId == null) {
+            return false;
+        }
+        for (Map.Entry<UUID, Session> entry : sessions.entrySet()) {
+            if (!entry.getKey().equals(playerId) && ringId.equals(entry.getValue().ringId())) {
+                return true;
+            }
+        }
+        return false;
+    }
+
     public boolean isCurrent(UUID playerId, UUID token) {
-        return playerId != null && token != null && token.equals(sessions.get(playerId));
+        Session session = session(playerId);
+        return session != null && token != null && token.equals(session.token());
     }
 
     public int size() {
@@ -70,9 +115,9 @@ public final class RingSessionManager {
     }
 
     public void clear() {
-        for (Map.Entry<UUID, UUID> entry : sessions.entrySet()) {
+        for (Map.Entry<UUID, Session> entry : sessions.entrySet()) {
             if (sessions.remove(entry.getKey(), entry.getValue())) {
-                notifyChanged(entry.getKey(), entry.getValue(), false);
+                notifyChanged(entry.getKey(), entry.getValue().token(), false);
             }
         }
     }

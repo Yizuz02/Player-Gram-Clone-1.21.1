@@ -64,6 +64,52 @@ class RingSessionManagerTest {
     }
 
     @Test
+    void sessionCarriesRingIdentityAndPrompt() {
+        RingSessionManager manager = new RingSessionManager();
+        UUID player = UUID.randomUUID();
+        UUID ring = UUID.randomUUID();
+
+        UUID token = manager.activate(player, ring, "ring prompt");
+
+        assertNotNull(token);
+        assertEquals(ring, manager.session(player).ringId());
+        assertEquals("ring prompt", manager.prompt(player));
+        assertEquals(token, manager.session(player).token());
+
+        assertTrue(manager.updatePrompt(player, ring, "updated prompt"));
+        assertEquals("updated prompt", manager.prompt(player));
+        assertFalse(manager.updatePrompt(player, UUID.randomUUID(), "wrong ring"));
+        assertEquals("updated prompt", manager.prompt(player));
+    }
+
+    @Test
+    void sessionsWithoutRingDetailsStillWork() {
+        RingSessionManager manager = new RingSessionManager();
+        UUID player = UUID.randomUUID();
+        UUID token = manager.activate(player);
+
+        assertNotNull(token);
+        assertNull(manager.session(player).ringId());
+        assertNull(manager.prompt(player));
+    }
+
+    @Test
+    void detectsAnActiveRingIdentityOwnedByAnotherPlayer() {
+        RingSessionManager manager = new RingSessionManager();
+        UUID first = UUID.randomUUID();
+        UUID second = UUID.randomUUID();
+        UUID ring = UUID.randomUUID();
+
+        manager.activate(first, ring, "first");
+        manager.activate(second, ring, "second");
+
+        assertTrue(manager.ringIdActiveElsewhere(second, ring));
+        assertTrue(manager.ringIdActiveElsewhere(first, ring));
+        assertTrue(manager.ringIdActiveElsewhere(UUID.randomUUID(), ring));
+        assertFalse(manager.ringIdActiveElsewhere(first, UUID.randomUUID()));
+    }
+
+    @Test
     void listenersReceiveActivationAndDeactivation() {
         RingSessionManager manager = new RingSessionManager();
         List<String> events = new ArrayList<>();

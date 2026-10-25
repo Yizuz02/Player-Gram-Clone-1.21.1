@@ -8,31 +8,25 @@ import net.yizuz.playerogrammod.Config;
  */
 public record HologramSettings(
         boolean enabled,
-        String skinUsername,
-        String displayName,
         double followStartDistance,
         double followStopDistance,
         double followSpeed,
         boolean nameplate
 ) {
     public HologramSettings {
-        skinUsername = skinUsername == null ? "" : skinUsername.trim();
-        displayName = displayName == null ? "" : displayName.trim();
         followStartDistance = Math.max(1.0, followStartDistance);
         followStopDistance = Math.max(0.5, Math.min(followStopDistance, followStartDistance - 0.25));
         followSpeed = Math.max(0.1, followSpeed);
     }
 
     public static HologramSettings defaults() {
-        return new HologramSettings(true, "", "", 4.0, 2.25, 1.0, true);
+        return new HologramSettings(true, 4.0, 2.25, 1.0, true);
     }
 
     public static HologramSettings current() {
         try {
             return new HologramSettings(
                     Config.HOLOGRAM_ENABLED.get(),
-                    Config.HOLOGRAM_SKIN_USERNAME.get(),
-                    Config.HOLOGRAM_DISPLAY_NAME.get(),
                     Config.HOLOGRAM_FOLLOW_START_DISTANCE.get(),
                     Config.HOLOGRAM_FOLLOW_STOP_DISTANCE.get(),
                     Config.HOLOGRAM_FOLLOW_SPEED.get(),
@@ -40,20 +34,6 @@ public record HologramSettings(
         } catch (RuntimeException e) {
             return defaults();
         }
-    }
-
-    public String resolveSkinUsername(String ownerName) {
-        if (!skinUsername.isBlank()) {
-            return skinUsername;
-        }
-        return ownerName == null ? "" : ownerName;
-    }
-
-    public String resolveDisplayName(String resolvedSkinUsername) {
-        if (!displayName.isBlank()) {
-            return displayName;
-        }
-        return resolvedSkinUsername == null ? "" : resolvedSkinUsername;
     }
 
     public static boolean shouldMove(double distanceSq, double startDistance) {

@@ -4,16 +4,21 @@ import net.minecraft.server.MinecraftServer;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.sounds.SoundSource;
 import net.minecraft.world.InteractionHand;
+import net.minecraft.world.item.ItemStack;
 import net.neoforged.neoforge.event.ServerChatEvent;
 import net.yizuz.playerogrammod.Config;
 import net.yizuz.playerogrammod.ai.AiService;
 import net.yizuz.playerogrammod.ai.AiState;
 import net.yizuz.playerogrammod.ai.AiStatus;
 import net.yizuz.playerogrammod.hologram.HologramService;
+import net.yizuz.playerogrammod.item.LanternRingItem;
 import net.yizuz.playerogrammod.item.ModItems;
 import net.yizuz.playerogrammod.prompt.SystemPromptProvider;
+import net.yizuz.playerogrammod.ring.RingConfig;
+import net.yizuz.playerogrammod.ring.RingConfigs;
 import net.yizuz.playerogrammod.ring.RingSessionManager;
 import net.yizuz.playerogrammod.ring.RingSessionRules;
+import net.yizuz.playerogrammod.ring.RingValidation;
 import net.yizuz.playerogrammod.sound.ModSounds;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -50,13 +55,18 @@ public final class ChatConversationService {
 
         int maxMessages = Config.HISTORY_MESSAGES.get();
         int maxChars = Config.HISTORY_MAX_CHARS.get();
+        RingSessionManager sessions = RingSessionManager.get();
         this.pipeline = new ConversationPipeline(
                 new ConversationManager(maxMessages, maxChars),
                 SystemPromptProvider.instance(),
                 AiService.get()::complete,
                 new Sink(),
                 server::execute,
-                RingSessionManager.get()::isCurrent);
+                sessions::isCurrent,
+                playerId -> {
+                    String prompt = sessions.prompt(playerId);
+                    return prompt == null ? SystemPromptProvider.instance().get() : prompt;
+                });
         HologramService.get().onServerStarting(server);
         LOGGER.info("Ring chat pipeline ready (history {} messages / {} chars).", maxMessages, maxChars);
     }
@@ -97,12 +107,24 @@ public final class ChatConversationService {
             return;
         }
 
-        UUID token = sessions.activate(playerId);
+        ItemStack ringStack = player.getItemInHand(hand);
+        if (!(ringStack.getItem() instanceof LanternRingItem)) {
+            return;
+        }
+        RingConfig config = RingValidation.sanitize(RingConfigs.ensureIdentity(ringStack));
+        if (sessions.ringIdActiveElsewhere(playerId, config.ringId())) {
+            config = config.withRingId(UUID.randomUUID());
+            LOGGER.info("Reassigned a copied ring identity for {} to {}", playerId, config.ringId());
+        }
+        RingConfigs.set(ringStack, config);
+
+        UUID token = sessions.activate(playerId, config.ringId(), RingConfigs.effectivePrompt(config));
         if (token == null) {
             return;
         }
-        LOGGER.info("Ring session activated for {} (hand={}).", playerId, hand);
-        HologramService.get().spawn(currentServer, player, token);
+        LOGGER.info("Ring session activated for {} (hand={}, ring={}).",
+                playerId, hand, config.ringId());
+        HologramService.get().spawn(currentServer, player, token, config);
         playRingSound(player, 1.0f);
         ChatPresenter.sendStatus(currentServer, playerId, ACTIVATED_MESSAGE);
         generateIntroduction(currentServer, playerId, token);
@@ -118,8 +140,9 @@ public final class ChatConversationService {
 
         UUID playerId = player.getUUID();
         RingSessionManager sessions = RingSessionManager.get();
-        boolean active = sessions.isActive(playerId);
-        boolean holdingRing = isHoldingRing(player);
+        RingSessionManager.Session session = sessions.session(playerId);
+        boolean active = session != null;
+        boolean holdingRing = isHoldingRing(player, session == null ? null : session.ringId());
 
         if (RingSessionRules.shouldDeactivate(active, holdingRing)) {
             deactivate(player, RING_REQUIRED_MESSAGE, 0.8f);
@@ -134,7 +157,7 @@ public final class ChatConversationService {
             return;
         }
 
-        UUID token = sessions.token(playerId);
+        UUID token = session == null ? null : session.token();
         event.setCanceled(true);
         ChatPresenter.sendPlayerMessage(currentServer, player, text);
         current.onPlayerMessage(playerId, text, token);
@@ -144,10 +167,23 @@ public final class ChatConversationService {
         if (player == null || server == null) {
             return;
         }
-        RingSessionManager sessions = RingSessionManager.get();
-        if (RingSessionRules.shouldDeactivate(sessions.isActive(player.getUUID()), isHoldingRing(player))) {
+        RingSessionManager.Session session = RingSessionManager.get().session(player.getUUID());
+        if (session != null && !isHoldingRing(player, session.ringId())) {
             deactivate(player, RING_REQUIRED_MESSAGE, 0.8f);
         }
+    }
+
+    public void onRingConfigSaved(ServerPlayer player, RingConfig config) {
+        if (player == null || config == null) {
+            return;
+        }
+        UUID playerId = player.getUUID();
+        RingSessionManager.Session session = RingSessionManager.get().session(playerId);
+        if (session == null || session.ringId() == null || !session.ringId().equals(config.ringId())) {
+            return;
+        }
+        RingSessionManager.get().updatePrompt(playerId, config.ringId(), RingConfigs.effectivePrompt(config));
+        HologramService.get().updateConfig(playerId, config);
     }
 
     public void onPlayerLogout(ServerPlayer player) {
@@ -199,7 +235,7 @@ public final class ChatConversationService {
         if (current == null) {
             return;
         }
-        current.generateIntroduction().whenComplete((answer, error) -> {
+        current.generateIntroduction(playerId).whenComplete((answer, error) -> {
             if (error != null) {
                 LOGGER.warn("Could not generate the ring introduction for {}: {}",
                         playerId, AiService.rootMessage(error), error);
@@ -228,6 +264,19 @@ public final class ChatConversationService {
         } catch (RuntimeException e) {
             LOGGER.debug("Could not play the ring sound for {}.", player.getUUID(), e);
         }
+    }
+
+    private static boolean isHoldingRing(ServerPlayer player, UUID ringId) {
+        if (ringId == null) {
+            return isHoldingRing(player);
+        }
+        return isRingWithId(player.getMainHandItem(), ringId)
+                || isRingWithId(player.getOffhandItem(), ringId);
+    }
+
+    private static boolean isRingWithId(ItemStack stack, UUID ringId) {
+        return stack.getItem() instanceof LanternRingItem
+                && ringId.equals(RingConfigs.get(stack).ringId());
     }
 
     private static boolean isHoldingRing(ServerPlayer player) {

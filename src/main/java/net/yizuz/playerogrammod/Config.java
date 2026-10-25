@@ -121,15 +121,6 @@ public final class Config {
             .comment("Spawn a player-model hologram while a player's Lantern Ring session is active.")
             .define("hologramEnabled", true);
 
-    public static final ModConfigSpec.ConfigValue<String> HOLOGRAM_SKIN_USERNAME = BUILDER
-            .comment("Minecraft username whose skin the hologram uses.",
-                    "Leave empty to use each ring owner's own username/skin.")
-            .define("hologramSkinUsername", "");
-
-    public static final ModConfigSpec.ConfigValue<String> HOLOGRAM_DISPLAY_NAME = BUILDER
-            .comment("Name shown above the hologram. Leave empty to use the resolved skin username.")
-            .define("hologramDisplayName", "");
-
     public static final ModConfigSpec.DoubleValue HOLOGRAM_FOLLOW_START_DISTANCE = BUILDER
             .comment("Distance at which the hologram starts following its owner.")
             .defineInRange("hologramFollowStartDistance", 4.0D, 1.0D, 64.0D);

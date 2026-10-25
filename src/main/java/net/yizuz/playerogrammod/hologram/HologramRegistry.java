@@ -11,16 +11,20 @@ import java.util.UUID;
  * can be unit tested without a Minecraft server.
  */
 public final class HologramRegistry {
-    public record Entry(UUID owner, UUID token, UUID entityId) {
+    public record Entry(UUID owner, UUID token, UUID entityId, UUID ringId) {
     }
 
     private final Map<UUID, Entry> entries = new LinkedHashMap<>();
 
     public Entry put(UUID owner, UUID token, UUID entityId) {
+        return put(owner, token, entityId, null);
+    }
+
+    public Entry put(UUID owner, UUID token, UUID entityId, UUID ringId) {
         if (owner == null || token == null || entityId == null) {
             throw new IllegalArgumentException("owner, token, and entityId are required");
         }
-        return entries.put(owner, new Entry(owner, token, entityId));
+        return entries.put(owner, new Entry(owner, token, entityId, ringId));
     }
 
     public Entry get(UUID owner) {

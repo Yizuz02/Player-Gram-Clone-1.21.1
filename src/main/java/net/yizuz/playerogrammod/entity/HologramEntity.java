@@ -45,6 +45,8 @@ public class HologramEntity extends PathfinderMob {
     private UUID ownerUUID;
     @Nullable
     private UUID sessionToken;
+    @Nullable
+    private UUID ringId;
 
     public HologramEntity(EntityType<? extends HologramEntity> type, Level level) {
         super(type, level);
@@ -106,6 +108,15 @@ public class HologramEntity extends PathfinderMob {
     public void setOwner(@Nullable UUID ownerUUID, @Nullable UUID sessionToken) {
         this.ownerUUID = ownerUUID;
         this.sessionToken = sessionToken;
+    }
+
+    public void setRingId(@Nullable UUID ringId) {
+        this.ringId = ringId;
+    }
+
+    @Nullable
+    public UUID getRingId() {
+        return this.ringId;
     }
 
     @Nullable
@@ -274,6 +285,9 @@ public class HologramEntity extends PathfinderMob {
         if (this.sessionToken != null) {
             tag.putUUID("Session", this.sessionToken);
         }
+        if (this.ringId != null) {
+            tag.putUUID("RingId", this.ringId);
+        }
         tag.putString("SkinUsername", this.getSkinUsername());
         tag.putString("SkinTexture", this.getSkinTexture());
         tag.putString("SkinSignature", this.getSkinTextureSignature());
@@ -285,6 +299,7 @@ public class HologramEntity extends PathfinderMob {
         super.readAdditionalSaveData(tag);
         this.ownerUUID = tag.hasUUID("Owner") ? tag.getUUID("Owner") : null;
         this.sessionToken = tag.hasUUID("Session") ? tag.getUUID("Session") : null;
+        this.ringId = tag.hasUUID("RingId") ? tag.getUUID("RingId") : null;
         this.setSkinUsername(tag.getString("SkinUsername"));
         this.setSkinTexture(tag.getString("SkinTexture"));
         this.setSkinTextureSignature(tag.getString("SkinSignature"));

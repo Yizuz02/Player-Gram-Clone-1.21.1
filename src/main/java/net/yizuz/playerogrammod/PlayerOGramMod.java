@@ -4,6 +4,8 @@ import net.minecraft.world.item.CreativeModeTabs;
 import net.yizuz.playerogrammod.entity.ModEntities;
 import net.yizuz.playerogrammod.hologram.HologramService;
 import net.yizuz.playerogrammod.item.ModItems;
+import net.yizuz.playerogrammod.network.RingNetwork;
+import net.yizuz.playerogrammod.ring.ModDataComponents;
 import net.yizuz.playerogrammod.sound.ModSounds;
 import org.slf4j.Logger;
 
@@ -40,6 +42,8 @@ public class PlayerOGramMod {
         ModItems.register(modEventBus);
         ModSounds.register(modEventBus);
         ModEntities.register(modEventBus);
+        ModDataComponents.register(modEventBus);
+        RingNetwork.register(modEventBus);
 
         // Register the item to a creative tab
         modEventBus.addListener(this::addCreative);

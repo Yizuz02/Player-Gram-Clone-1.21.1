@@ -5,7 +5,6 @@
 
   "playerogrammod.configuration.aiEnabled": "Enable AI",
   "playerogrammod.configuration.autoStart": "Start With Server",
-  "playerogrammod.configuration.chatPrefix": "Chat Prefix",
   "playerogrammod.configuration.historyMessages": "History Messages",
   "playerogrammod.configuration.historyMaxChars": "History Max Characters",
   "playerogrammod.configuration.autoInstallRuntime": "Auto-Install Runtime",
@@ -30,5 +29,6 @@
   "playerogrammod.configuration.requestTimeoutSeconds": "Request Timeout (seconds)",
   "playerogrammod.configuration.webUi": "Enable Web UI",
 
-  "item.playerogrammod.lantern_ring": "Lantern Ring"
+  "item.playerogrammod.lantern_ring": "Lantern Ring",
+  "playerogrammod.subtitle.ring_sound": "Lantern Ring hums"
 }

@@ -1,0 +1,12 @@
+{
+  "ring_sound": {
+    "subtitle": "playerogrammod.subtitle.ring_sound",
+    "sounds": [
+      {
+        "name": "playerogrammod:ring_sound",
+        "volume": 0.8,
+        "pitch": 1.0
+      }
+    ]
+  }
+}

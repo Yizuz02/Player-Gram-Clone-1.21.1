@@ -2,6 +2,7 @@ package net.yizuz.playerogrammod;
 
 import net.minecraft.world.item.CreativeModeTabs;
 import net.yizuz.playerogrammod.item.ModItems;
+import net.yizuz.playerogrammod.sound.ModSounds;
 import org.slf4j.Logger;
 
 import com.mojang.logging.LogUtils;
@@ -18,7 +19,6 @@ import net.neoforged.neoforge.event.BuildCreativeModeTabContentsEvent;
 import net.neoforged.neoforge.event.server.ServerStartedEvent;
 import net.neoforged.neoforge.event.server.ServerStoppingEvent;
 import net.yizuz.playerogrammod.ai.AiService;
-import net.yizuz.playerogrammod.chat.ChatConversationService;
 
 // The value here should match an entry in the META-INF/neoforge.mods.toml file
 @Mod(PlayerOGramMod.MOD_ID)
@@ -36,6 +36,7 @@ public class PlayerOGramMod {
         NeoForge.EVENT_BUS.register(this);
 
         ModItems.register(modEventBus);
+        ModSounds.register(modEventBus);
 
         // Register the item to a creative tab
         modEventBus.addListener(this::addCreative);
@@ -44,7 +45,6 @@ public class PlayerOGramMod {
         modContainer.registerConfig(ModConfig.Type.COMMON, Config.SPEC);
 
         AiService.get().init();
-        ChatConversationService.get().init();
     }
 
     private void commonSetup(FMLCommonSetupEvent event) {

@@ -13,12 +13,12 @@ import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.CompletionException;
 import java.util.concurrent.Executor;
 import java.util.concurrent.RejectedExecutionException;
-import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.function.BiPredicate;
 import java.util.function.Function;
 
 public final class ConversationPipeline {
     public interface ChatSink {
-        void broadcastDialogue(String markdown);
+        void sendDialogue(UUID playerId, String markdown);
 
         void sendStatus(UUID playerId, String text);
     }
@@ -26,9 +26,9 @@ public final class ConversationPipeline {
     public static final String BUSY_STATUS = "I'm still thinking about your previous message.";
     public static final String ERROR_STATUS =
             "I couldn't answer that just now. Check the server console for details.";
-    public static final String GREETING_INSTRUCTION =
-            "You have just come online in the server chat. Greet the players with one short, natural sentence. "
-                    + "Do not use Markdown, lists, or headings.";
+    public static final String INTRODUCTION_INSTRUCTION =
+            "You have just been connected to a player through the Lantern Ring. "
+                    + "Greet them with one short, natural sentence. Do not use Markdown, lists, or headings.";
 
     private static final Logger LOGGER = LoggerFactory.getLogger(ConversationPipeline.class);
 
@@ -37,30 +37,23 @@ public final class ConversationPipeline {
     private final Function<List<LlamaClient.Message>, CompletableFuture<String>> completions;
     private final ChatSink sink;
     private final Executor serverExecutor;
-    private final String chatPrefix;
-    private final AtomicBoolean greetingAttempted = new AtomicBoolean(false);
+    private final BiPredicate<UUID, UUID> sessionCurrent;
 
     public ConversationPipeline(ConversationManager conversations, SystemPromptProvider prompts,
                                 Function<List<LlamaClient.Message>, CompletableFuture<String>> completions,
-                                ChatSink sink, Executor serverExecutor, String chatPrefix) {
+                                ChatSink sink, Executor serverExecutor,
+                                BiPredicate<UUID, UUID> sessionCurrent) {
         this.conversations = Objects.requireNonNull(conversations, "conversations");
         this.prompts = Objects.requireNonNull(prompts, "prompts");
         this.completions = Objects.requireNonNull(completions, "completions");
         this.sink = Objects.requireNonNull(sink, "sink");
         this.serverExecutor = Objects.requireNonNull(serverExecutor, "serverExecutor");
-        this.chatPrefix = chatPrefix == null || chatPrefix.isBlank() ? "AI:" : chatPrefix.trim();
+        this.sessionCurrent = Objects.requireNonNull(sessionCurrent, "sessionCurrent");
     }
 
-    public String extractPrompt(String rawText) {
-        return ChatRouter.extract(chatPrefix, rawText).orElse(null);
-    }
-
-    public String chatPrefix() {
-        return chatPrefix;
-    }
-
-    public void onPlayerMessage(UUID playerId, String prompt) {
-        if (playerId == null || prompt == null || prompt.isBlank()) {
+    public void onPlayerMessage(UUID playerId, String prompt, UUID sessionToken) {
+        if (playerId == null || prompt == null || prompt.isBlank()
+                || !sessionCurrent.test(playerId, sessionToken)) {
             return;
         }
 
@@ -79,19 +72,21 @@ public final class ConversationPipeline {
             future = completions.apply(request);
         } catch (RuntimeException e) {
             conversation.end();
-            handleFailure(playerId, e);
+            handleFailure(playerId, sessionToken, e);
             return;
         }
 
         if (future == null) {
             conversation.end();
-            handleFailure(playerId, new IllegalStateException("No completion future was returned."));
+            handleFailure(playerId, sessionToken,
+                    new IllegalStateException("No completion future was returned."));
             return;
         }
 
         future.whenComplete((answer, error) -> {
             try {
-                serverExecutor.execute(() -> deliver(playerId, prompt, conversation, answer, error));
+                serverExecutor.execute(() ->
+                        deliver(playerId, prompt, conversation, sessionToken, answer, error));
             } catch (RejectedExecutionException e) {
                 conversation.end();
                 LOGGER.warn("Could not deliver the AI response because the server is stopping.", e);
@@ -99,16 +94,12 @@ public final class ConversationPipeline {
         });
     }
 
-    public CompletableFuture<String> greetOnce() {
-        if (!greetingAttempted.compareAndSet(false, true)) {
-            return CompletableFuture.completedFuture(null);
-        }
-
+    public CompletableFuture<String> generateIntroduction() {
         CompletableFuture<String> future;
         try {
             List<LlamaClient.Message> request = List.of(
                     new LlamaClient.Message("system", prompts.get()),
-                    new LlamaClient.Message("user", GREETING_INSTRUCTION));
+                    new LlamaClient.Message("user", INTRODUCTION_INSTRUCTION));
             future = completions.apply(request);
         } catch (RuntimeException e) {
             return CompletableFuture.failedFuture(e);
@@ -119,10 +110,6 @@ public final class ConversationPipeline {
                     new IllegalStateException("No completion future was returned."));
         }
         return future.thenApply(answer -> answer == null ? "" : answer.strip());
-    }
-
-    public void resetGreeting() {
-        greetingAttempted.set(false);
     }
 
     public void clearConversation(UUID playerId) {
@@ -136,20 +123,25 @@ public final class ConversationPipeline {
     }
 
     private void deliver(UUID playerId, String prompt, ConversationManager.Conversation conversation,
-                         String answer, Throwable error) {
+                         UUID sessionToken, String answer, Throwable error) {
         try {
             conversation.end();
+            if (!sessionCurrent.test(playerId, sessionToken)) {
+                LOGGER.debug("Suppressing AI response for an ended or replaced ring session ({}).", playerId);
+                return;
+            }
             if (error != null) {
-                handleFailure(playerId, error);
+                handleFailure(playerId, sessionToken, error);
                 return;
             }
             String text = answer == null ? "" : answer.strip();
             if (text.isEmpty()) {
-                handleFailure(playerId, new IllegalStateException("The model returned an empty response."));
+                handleFailure(playerId, sessionToken,
+                        new IllegalStateException("The model returned an empty response."));
                 return;
             }
             conversation.addExchange(prompt, text);
-            sink.broadcastDialogue(text);
+            sink.sendDialogue(playerId, text);
         } catch (RuntimeException e) {
             LOGGER.warn("Could not deliver the AI response for {}.", playerId, e);
             sendStatus(playerId, ERROR_STATUS);
@@ -168,9 +160,11 @@ public final class ConversationPipeline {
         }
     }
 
-    private void handleFailure(UUID playerId, Throwable error) {
+    private void handleFailure(UUID playerId, UUID sessionToken, Throwable error) {
         LOGGER.warn("AI chat request failed for {}: {}", playerId, rootMessage(error), error);
-        sendStatus(playerId, ERROR_STATUS);
+        if (sessionCurrent.test(playerId, sessionToken)) {
+            sendStatus(playerId, ERROR_STATUS);
+        }
     }
 
     static String rootMessage(Throwable error) {

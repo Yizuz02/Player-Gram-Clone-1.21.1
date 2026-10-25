@@ -11,17 +11,19 @@ import java.util.ArrayDeque;
 import java.util.ArrayList;
 import java.util.Deque;
 import java.util.List;
+import java.util.Objects;
 import java.util.UUID;
 import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.atomic.AtomicReference;
 import java.util.function.Function;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
-import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 class ConversationPipelineTest {
     private final UUID player = UUID.randomUUID();
+    private final UUID token = UUID.randomUUID();
     private FakeCompletions completions;
     private RecordingSink sink;
     private ConversationManager manager;
@@ -35,7 +37,8 @@ class ConversationPipelineTest {
         completions = new FakeCompletions();
         sink = new RecordingSink();
         manager = new ConversationManager(12, 6000);
-        pipeline = new ConversationPipeline(manager, prompts, completions, sink, Runnable::run, "AI:");
+        pipeline = new ConversationPipeline(manager, prompts, completions, sink, Runnable::run,
+                (playerId, sessionToken) -> true);
     }
 
     @Test
@@ -43,8 +46,8 @@ class ConversationPipelineTest {
         completions.respond("hi");
         completions.respond("again-answer");
 
-        pipeline.onPlayerMessage(player, "hello");
-        pipeline.onPlayerMessage(player, "again");
+        pipeline.onPlayerMessage(player, "hello", token);
+        pipeline.onPlayerMessage(player, "again", token);
 
         assertEquals(2, completions.requests.size());
         List<LlamaClient.Message> first = completions.requests.get(0);
@@ -58,7 +61,9 @@ class ConversationPipelineTest {
         assertEquals("hi", second.get(2).content());
         assertEquals("again", second.get(3).content());
 
-        assertEquals(List.of("hi", "again-answer"), sink.broadcasts);
+        assertEquals(List.of(
+                new RecordingSink.Dialogue(player, "hi"),
+                new RecordingSink.Dialogue(player, "again-answer")), sink.dialogues);
         assertEquals(4, manager.get(player).messageCount());
         assertFalse(manager.get(player).isBusy());
     }
@@ -68,12 +73,12 @@ class ConversationPipelineTest {
         CompletableFuture<String> pending = new CompletableFuture<>();
         completions.respond(pending);
 
-        pipeline.onPlayerMessage(player, "one");
-        pipeline.onPlayerMessage(player, "two");
+        pipeline.onPlayerMessage(player, "one", token);
+        pipeline.onPlayerMessage(player, "two", token);
 
         assertEquals(1, completions.requests.size());
         assertTrue(statusTexts().contains(ConversationPipeline.BUSY_STATUS));
-        assertTrue(sink.broadcasts.isEmpty());
+        assertTrue(sink.dialogues.isEmpty());
         assertTrue(manager.get(player).isBusy());
     }
 
@@ -82,14 +87,14 @@ class ConversationPipelineTest {
         CompletableFuture<String> pending = new CompletableFuture<>();
         completions.respond(pending);
 
-        pipeline.onPlayerMessage(player, "hi");
+        pipeline.onPlayerMessage(player, "hi", token);
 
-        assertTrue(sink.broadcasts.isEmpty());
+        assertTrue(sink.dialogues.isEmpty());
         assertTrue(manager.get(player).isBusy());
 
         pending.complete("late answer");
 
-        assertEquals(List.of("late answer"), sink.broadcasts);
+        assertEquals(List.of(new RecordingSink.Dialogue(player, "late answer")), sink.dialogues);
         assertFalse(manager.get(player).isBusy());
     }
 
@@ -97,26 +102,26 @@ class ConversationPipelineTest {
     void failureClearsBusyAndDoesNotLeakDetails() {
         completions.respondFailed(new RuntimeException("HTTP 500 secret"));
 
-        pipeline.onPlayerMessage(player, "boom");
+        pipeline.onPlayerMessage(player, "boom", token);
 
-        assertTrue(sink.broadcasts.isEmpty());
+        assertTrue(sink.dialogues.isEmpty());
         assertEquals(0, manager.get(player).messageCount());
         assertFalse(manager.get(player).isBusy());
         assertTrue(statusTexts().contains(ConversationPipeline.ERROR_STATUS));
         assertFalse(statusTexts().stream().anyMatch(text -> text.contains("secret")));
 
         completions.respond("recovered");
-        pipeline.onPlayerMessage(player, "retry");
-        assertEquals(List.of("recovered"), sink.broadcasts);
+        pipeline.onPlayerMessage(player, "retry", token);
+        assertEquals(List.of(new RecordingSink.Dialogue(player, "recovered")), sink.dialogues);
     }
 
     @Test
     void emptyAnswerIsTreatedAsFailure() {
         completions.respond("");
 
-        pipeline.onPlayerMessage(player, "hi");
+        pipeline.onPlayerMessage(player, "hi", token);
 
-        assertTrue(sink.broadcasts.isEmpty());
+        assertTrue(sink.dialogues.isEmpty());
         assertEquals(0, manager.get(player).messageCount());
         assertFalse(manager.get(player).isBusy());
         assertTrue(statusTexts().contains(ConversationPipeline.ERROR_STATUS));
@@ -126,11 +131,11 @@ class ConversationPipelineTest {
     void synchronousCompletionFailureClearsBusy() {
         ConversationPipeline broken = new ConversationPipeline(manager, prompts, request -> {
             throw new RuntimeException("boom");
-        }, sink, Runnable::run, "AI:");
+        }, sink, Runnable::run, (playerId, sessionToken) -> true);
 
-        broken.onPlayerMessage(player, "hi");
+        broken.onPlayerMessage(player, "hi", token);
 
-        assertTrue(sink.broadcasts.isEmpty());
+        assertTrue(sink.dialogues.isEmpty());
         assertEquals(0, manager.get(player).messageCount());
         assertFalse(manager.get(player).isBusy());
         assertTrue(statusTexts().contains(ConversationPipeline.ERROR_STATUS));
@@ -142,8 +147,8 @@ class ConversationPipelineTest {
         completions.respond("a1");
         completions.respond("b1");
 
-        pipeline.onPlayerMessage(player, "one");
-        pipeline.onPlayerMessage(other, "two");
+        pipeline.onPlayerMessage(player, "one", token);
+        pipeline.onPlayerMessage(other, "two", token);
 
         assertEquals(2, completions.requests.size());
         List<LlamaClient.Message> secondRequest = completions.requests.get(1);
@@ -154,29 +159,51 @@ class ConversationPipelineTest {
     }
 
     @Test
-    void greetingIsGeneratedOnceAndNeverStored() {
+    void introductionIsGeneratedWithoutHistory() {
         completions.respond("Hello players");
 
-        assertEquals("Hello players", pipeline.greetOnce().join());
-        assertNull(pipeline.greetOnce().join());
+        assertEquals("Hello players", pipeline.generateIntroduction().join());
         assertEquals(1, completions.requests.size());
-
         List<LlamaClient.Message> request = completions.requests.get(0);
         assertEquals(List.of("system", "user"), roles(request));
         assertEquals(prompts.get(), request.get(0).content());
-        assertEquals(ConversationPipeline.GREETING_INSTRUCTION, request.get(1).content());
+        assertEquals(ConversationPipeline.INTRODUCTION_INSTRUCTION, request.get(1).content());
         assertEquals(0, manager.size());
 
-        pipeline.resetGreeting();
         completions.respond("Hello again");
-        assertEquals("Hello again", pipeline.greetOnce().join());
+        assertEquals("Hello again", pipeline.generateIntroduction().join());
         assertEquals(2, completions.requests.size());
     }
 
     @Test
-    void extractsTheConfiguredPrefix() {
-        assertEquals("hi", pipeline.extractPrompt("AI: hi"));
-        assertNull(pipeline.extractPrompt("hello"));
+    void endedSessionSuppressesResponseAndHistory() {
+        AtomicReference<UUID> currentToken = new AtomicReference<>(token);
+        ConversationPipeline sessionPipeline = new ConversationPipeline(manager, prompts, completions,
+                sink, Runnable::run,
+                (playerId, sessionToken) -> Objects.equals(currentToken.get(), sessionToken));
+
+        CompletableFuture<String> pending = new CompletableFuture<>();
+        completions.respond(pending);
+
+        sessionPipeline.onPlayerMessage(player, "hi", token);
+        currentToken.set(UUID.randomUUID());
+        pending.complete("late answer");
+
+        assertTrue(sink.dialogues.isEmpty());
+        assertEquals(0, manager.get(player).messageCount());
+        assertFalse(manager.get(player).isBusy());
+    }
+
+    @Test
+    void inactiveSessionDoesNotStartARequest() {
+        ConversationPipeline inactive = new ConversationPipeline(manager, prompts, completions, sink,
+                Runnable::run, (playerId, sessionToken) -> false);
+
+        inactive.onPlayerMessage(player, "hi", token);
+
+        assertTrue(completions.requests.isEmpty());
+        assertTrue(sink.dialogues.isEmpty());
+        assertTrue(sink.statuses.isEmpty());
     }
 
     private List<String> statusTexts() {
@@ -212,17 +239,20 @@ class ConversationPipelineTest {
     }
 
     private static final class RecordingSink implements ConversationPipeline.ChatSink {
-        private final List<String> broadcasts = new ArrayList<>();
+        private final List<Dialogue> dialogues = new ArrayList<>();
         private final List<Status> statuses = new ArrayList<>();
 
         @Override
-        public void broadcastDialogue(String markdown) {
-            broadcasts.add(markdown);
+        public void sendDialogue(UUID playerId, String markdown) {
+            dialogues.add(new Dialogue(playerId, markdown));
         }
 
         @Override
         public void sendStatus(UUID playerId, String text) {
             statuses.add(new Status(playerId, text));
+        }
+
+        private record Dialogue(UUID playerId, String markdown) {
         }
 
         private record Status(UUID playerId, String text) {

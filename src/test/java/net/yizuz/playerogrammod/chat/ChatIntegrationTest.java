@@ -66,7 +66,7 @@ class ChatIntegrationTest {
                         messages, 0.7, 64, false, Duration.ofSeconds(5))),
                 sink,
                 Runnable::run,
-                "AI:");
+                (playerId, sessionToken) -> true);
     }
 
     @AfterEach
@@ -79,11 +79,15 @@ class ChatIntegrationTest {
     @Test
     void addressedChatFlowsThroughLlamaClientAndHistory() {
         UUID player = UUID.randomUUID();
+        UUID token = UUID.randomUUID();
 
-        pipeline.onPlayerMessage(player, "hello");
-        pipeline.onPlayerMessage(player, "again");
+        pipeline.onPlayerMessage(player, "hello", token);
+        pipeline.onPlayerMessage(player, "again", token);
 
-        assertEquals(List.of("answer-1", "answer-2"), sink.broadcasts);
+        assertEquals(List.of("answer-1", "answer-2"),
+                sink.dialogues.stream().map(RecordingSink.Dialogue::markdown).toList());
+        assertEquals(List.of(player, player),
+                sink.dialogues.stream().map(RecordingSink.Dialogue::playerId).toList());
         assertEquals(2, requestBodies.size());
 
         JsonObject first = JsonParser.parseString(requestBodies.get(0)).getAsJsonObject();
@@ -108,17 +112,20 @@ class ChatIntegrationTest {
     }
 
     private static final class RecordingSink implements ConversationPipeline.ChatSink {
-        private final List<String> broadcasts = new CopyOnWriteArrayList<>();
+        private final List<Dialogue> dialogues = new CopyOnWriteArrayList<>();
         private final List<Status> statuses = new CopyOnWriteArrayList<>();
 
         @Override
-        public void broadcastDialogue(String markdown) {
-            broadcasts.add(markdown);
+        public void sendDialogue(UUID playerId, String markdown) {
+            dialogues.add(new Dialogue(playerId, markdown));
         }
 
         @Override
         public void sendStatus(UUID playerId, String text) {
             statuses.add(new Status(playerId, text));
+        }
+
+        private record Dialogue(UUID playerId, String markdown) {
         }
     }
 }

@@ -43,14 +43,27 @@ public final class ChatPresenter {
         return lines;
     }
 
-    public static void broadcast(MinecraftServer server, String markdown) {
-        if (server == null || markdown == null || markdown.isBlank()) {
+    public static void sendDialogue(MinecraftServer server, UUID playerId, String markdown) {
+        if (server == null || playerId == null || markdown == null || markdown.isBlank()) {
+            return;
+        }
+        ServerPlayer player = server.getPlayerList().getPlayer(playerId);
+        if (player == null) {
             return;
         }
         for (Component line : format(markdown)) {
-            server.getPlayerList().broadcastSystemMessage(line, false);
+            player.sendSystemMessage(line);
         }
-        LOGGER.info("{}", AI_PREFIX + markdown);
+        LOGGER.info("[Player-O-Gram -> {}] {}", player.getGameProfile().getName(), markdown);
+    }
+
+    public static void sendPlayerMessage(MinecraftServer server, ServerPlayer player, String text) {
+        if (server == null || player == null || text == null) {
+            return;
+        }
+        player.sendSystemMessage(Component.translatable("chat.type.text", player.getDisplayName(),
+                Component.literal(text.replace('\u00a7', '&'))));
+        LOGGER.debug("AI prompt echo for {}: {}", player.getUUID(), text);
     }
 
     public static void sendStatus(MinecraftServer server, UUID playerId, String text) {

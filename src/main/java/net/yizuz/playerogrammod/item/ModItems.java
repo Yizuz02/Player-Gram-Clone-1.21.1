@@ -6,14 +6,17 @@ import net.neoforged.neoforge.registries.DeferredItem;
 import net.neoforged.neoforge.registries.DeferredRegister;
 import net.yizuz.playerogrammod.PlayerOGramMod;
 
-public class ModItems {
+public final class ModItems {
+    public static final String LANTERN_RING_ID = "lantern_ring";
     public static final DeferredRegister.Items ITEMS = DeferredRegister.createItems(PlayerOGramMod.MOD_ID);
 
-    public static final DeferredItem<Item> LANTERN_RING = ITEMS.register("lantern_ring",
-            () -> new Item(new Item.Properties()));
-
+    public static final DeferredItem<LanternRingItem> LANTERN_RING = ITEMS.register(LANTERN_RING_ID,
+            () -> new LanternRingItem(new Item.Properties()));
 
     public static void register(IEventBus eventBus) {
         ITEMS.register(eventBus);
+    }
+
+    private ModItems() {
     }
 }

@@ -1,6 +1,8 @@
 package net.yizuz.playerogrammod;
 
 import net.minecraft.world.item.CreativeModeTabs;
+import net.yizuz.playerogrammod.entity.ModEntities;
+import net.yizuz.playerogrammod.hologram.HologramService;
 import net.yizuz.playerogrammod.item.ModItems;
 import net.yizuz.playerogrammod.sound.ModSounds;
 import org.slf4j.Logger;
@@ -37,6 +39,7 @@ public class PlayerOGramMod {
 
         ModItems.register(modEventBus);
         ModSounds.register(modEventBus);
+        ModEntities.register(modEventBus);
 
         // Register the item to a creative tab
         modEventBus.addListener(this::addCreative);
@@ -54,6 +57,7 @@ public class PlayerOGramMod {
     private void onConfigEvent(ModConfigEvent event) {
         if (event.getConfig().getSpec() == Config.SPEC) {
             AiService.get().onConfigChanged();
+            HologramService.get().onConfigChanged();
         }
     }
 

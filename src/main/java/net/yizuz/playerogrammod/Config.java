@@ -117,6 +117,35 @@ public final class Config {
             .comment("Expose llama-server's built-in web UI. Disabled by default.")
             .define("webUi", false);
 
+    public static final ModConfigSpec.BooleanValue HOLOGRAM_ENABLED = BUILDER
+            .comment("Spawn a player-model hologram while a player's Lantern Ring session is active.")
+            .define("hologramEnabled", true);
+
+    public static final ModConfigSpec.ConfigValue<String> HOLOGRAM_SKIN_USERNAME = BUILDER
+            .comment("Minecraft username whose skin the hologram uses.",
+                    "Leave empty to use each ring owner's own username/skin.")
+            .define("hologramSkinUsername", "");
+
+    public static final ModConfigSpec.ConfigValue<String> HOLOGRAM_DISPLAY_NAME = BUILDER
+            .comment("Name shown above the hologram. Leave empty to use the resolved skin username.")
+            .define("hologramDisplayName", "");
+
+    public static final ModConfigSpec.DoubleValue HOLOGRAM_FOLLOW_START_DISTANCE = BUILDER
+            .comment("Distance at which the hologram starts following its owner.")
+            .defineInRange("hologramFollowStartDistance", 4.0D, 1.0D, 64.0D);
+
+    public static final ModConfigSpec.DoubleValue HOLOGRAM_FOLLOW_STOP_DISTANCE = BUILDER
+            .comment("Distance at which the hologram stops following. Must be smaller than the start distance.")
+            .defineInRange("hologramFollowStopDistance", 2.25D, 0.5D, 63.0D);
+
+    public static final ModConfigSpec.DoubleValue HOLOGRAM_FOLLOW_SPEED = BUILDER
+            .comment("Pathfinding speed multiplier used while following.")
+            .defineInRange("hologramFollowSpeed", 1.0D, 0.1D, 3.0D);
+
+    public static final ModConfigSpec.BooleanValue HOLOGRAM_NAMEPLATE = BUILDER
+            .comment("Show the display name above the hologram.")
+            .define("hologramNameplate", true);
+
     static final ModConfigSpec SPEC = BUILDER.build();
 
     private Config() {

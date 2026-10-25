@@ -9,6 +9,7 @@ import net.yizuz.playerogrammod.Config;
 import net.yizuz.playerogrammod.ai.AiService;
 import net.yizuz.playerogrammod.ai.AiState;
 import net.yizuz.playerogrammod.ai.AiStatus;
+import net.yizuz.playerogrammod.hologram.HologramService;
 import net.yizuz.playerogrammod.item.ModItems;
 import net.yizuz.playerogrammod.prompt.SystemPromptProvider;
 import net.yizuz.playerogrammod.ring.RingSessionManager;
@@ -56,10 +57,12 @@ public final class ChatConversationService {
                 new Sink(),
                 server::execute,
                 RingSessionManager.get()::isCurrent);
+        HologramService.get().onServerStarting(server);
         LOGGER.info("Ring chat pipeline ready (history {} messages / {} chars).", maxMessages, maxChars);
     }
 
     public void onServerStopping() {
+        HologramService.get().onServerStopping();
         ConversationPipeline current = pipeline;
         if (current != null) {
             current.clearConversations();
@@ -99,6 +102,7 @@ public final class ChatConversationService {
             return;
         }
         LOGGER.info("Ring session activated for {} (hand={}).", playerId, hand);
+        HologramService.get().spawn(currentServer, player, token);
         playRingSound(player, 1.0f);
         ChatPresenter.sendStatus(currentServer, playerId, ACTIVATED_MESSAGE);
         generateIntroduction(currentServer, playerId, token);
@@ -150,8 +154,32 @@ public final class ChatConversationService {
         if (player == null) {
             return;
         }
-        if (RingSessionManager.get().deactivate(player.getUUID())) {
-            LOGGER.info("Ring session for {} ended on logout.", player.getUUID());
+        UUID playerId = player.getUUID();
+        if (RingSessionManager.get().deactivate(playerId)) {
+            HologramService.get().beginDespawn(playerId);
+            LOGGER.info("Ring session for {} ended on logout.", playerId);
+        }
+    }
+
+    public void onPlayerChangedDimension(ServerPlayer player) {
+        if (player == null) {
+            return;
+        }
+        UUID playerId = player.getUUID();
+        if (RingSessionManager.get().deactivate(playerId)) {
+            HologramService.get().beginDespawn(playerId);
+            LOGGER.info("Ring session for {} ended on dimension change.", playerId);
+        }
+    }
+
+    public void onPlayerDeath(ServerPlayer player) {
+        if (player == null) {
+            return;
+        }
+        UUID playerId = player.getUUID();
+        if (RingSessionManager.get().deactivate(playerId)) {
+            HologramService.get().beginDespawn(playerId);
+            LOGGER.info("Ring session for {} ended on death.", playerId);
         }
     }
 
@@ -160,6 +188,7 @@ public final class ChatConversationService {
         if (!RingSessionManager.get().deactivate(playerId)) {
             return;
         }
+        HologramService.get().beginDespawn(playerId);
         LOGGER.info("Ring session deactivated for {}.", playerId);
         playRingSound(player, pitch);
         ChatPresenter.sendStatus(server, playerId, message);

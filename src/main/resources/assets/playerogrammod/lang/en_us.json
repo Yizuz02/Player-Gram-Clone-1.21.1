@@ -28,6 +28,13 @@
   "playerogrammod.configuration.startupTimeoutSeconds": "Startup Timeout (seconds)",
   "playerogrammod.configuration.requestTimeoutSeconds": "Request Timeout (seconds)",
   "playerogrammod.configuration.webUi": "Enable Web UI",
+  "playerogrammod.configuration.hologramEnabled": "Enable Hologram",
+  "playerogrammod.configuration.hologramSkinUsername": "Hologram Skin Username",
+  "playerogrammod.configuration.hologramDisplayName": "Hologram Display Name",
+  "playerogrammod.configuration.hologramFollowStartDistance": "Hologram Follow Start Distance",
+  "playerogrammod.configuration.hologramFollowStopDistance": "Hologram Follow Stop Distance",
+  "playerogrammod.configuration.hologramFollowSpeed": "Hologram Follow Speed",
+  "playerogrammod.configuration.hologramNameplate": "Hologram Nameplate",
 
   "item.playerogrammod.lantern_ring": "Lantern Ring",
   "playerogrammod.subtitle.ring_sound": "Lantern Ring hums"

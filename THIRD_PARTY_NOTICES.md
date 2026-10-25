@@ -18,6 +18,14 @@ inside the mod JAR.
 - Downloaded: the selected quant (default `Q4_K_M`) into `<gameDir>/playerogram/models/`.
 - File names, sizes, and SHA-256 digests are pinned in `ModelManifest.java`.
 
+## Veil
+
+- Project: https://github.com/FoundryMC/Veil
+- License: GNU Lesser General Public License v3.0 (LGPL-3.0)
+- Used as a client-side rendering dependency (`foundry.veil:veil-neoforge-1.21.1:4.5.2`).
+- Veil is not bundled or redistributed inside this mod's JAR.
+- The hologram shader and render-type resources in this mod are authored for this project.
+
 ## Minecraft / NeoForge
 
 Minecraft and NeoForge are not distributed by this mod. See their respective licenses.

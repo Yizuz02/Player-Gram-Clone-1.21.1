@@ -86,6 +86,15 @@ Example mod description.
     ordering="NONE"
     side="BOTH"
 
+# Veil renders the hologram's scoped green materialization/dematerialization shader.
+# It is only needed on the client; a dedicated server can run the mod without Veil.
+[[dependencies.${mod_id}]]
+    modId="veil"
+    type="required"
+    versionRange="[${veil_version},)"
+    ordering="AFTER"
+    side="CLIENT"
+
 # Features are specific properties of the game environment, that you may want to declare you require. This example declares
 # that your mod requires GL version 3.2 or higher. Other features will be added. They are side aware so declaring this won't
 # stop your mod loading on the server for example.

@@ -188,3 +188,25 @@ idea {
         downloadJavadoc = true
     }
 }
+
+repositories {
+    mavenCentral()
+}
+
+dependencies {
+    testImplementation platform('org.junit:junit-bom:5.11.4')
+    testImplementation 'org.junit.jupiter:junit-jupiter'
+    testRuntimeOnly 'org.junit.platform:junit-platform-launcher'
+}
+
+tasks.named('test', Test) {
+    useJUnitPlatform()
+}
+
+
+
+dependencies {
+    testImplementation 'com.google.code.gson:gson:2.11.0'
+    testRuntimeOnly 'org.slf4j:slf4j-api:2.0.16'
+    testRuntimeOnly 'org.slf4j:slf4j-simple:2.0.16'
+}

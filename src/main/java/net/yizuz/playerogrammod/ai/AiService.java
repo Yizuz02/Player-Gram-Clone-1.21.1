@@ -11,11 +11,11 @@ import java.nio.file.Path;
 import java.security.SecureRandom;
 import java.time.Duration;
 import java.time.Instant;
-import java.util.ArrayList;
 import java.util.HexFormat;
 import java.util.List;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.CompletionException;
+import java.util.concurrent.CopyOnWriteArrayList;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
@@ -42,6 +42,7 @@ public final class AiService {
             .build();
     private final LlamaClient llama = new LlamaClient(apiClient);
     private final Object processLock = new Object();
+    private final List<Runnable> readyListeners = new CopyOnWriteArrayList<>();
 
     private volatile AiState state = AiState.STOPPED;
     private volatile Process process;
@@ -149,12 +150,9 @@ public final class AiService {
         return submit(this::stopInternal);
     }
 
-    public CompletableFuture<String> ask(String prompt) {
-        return ask(prompt, null);
-    }
-
-    public CompletableFuture<String> ask(String prompt, Consumer<String> progress) {
-        return submit(() -> startInternal(false, true, progress)).thenApplyAsync(ignored -> {
+    public CompletableFuture<String> complete(List<LlamaClient.Message> messages) {
+        List<LlamaClient.Message> request = List.copyOf(messages);
+        return submit(() -> startInternal(false, true, null)).thenApplyAsync(ignored -> {
             int currentPort = port;
             String currentKey = apiKey;
             if (state != AiState.READY || currentPort <= 0) {
@@ -166,19 +164,38 @@ public final class AiService {
             } catch (RuntimeException e) {
                 throw new CompletionException(e);
             }
-            List<LlamaClient.Message> messages = new ArrayList<>();
-            if (!settings.systemPrompt().isBlank()) {
-                messages.add(new LlamaClient.Message("system", settings.systemPrompt()));
-            }
-            messages.add(new LlamaClient.Message("user", prompt));
             try {
-                return llama.chat(host, currentPort, currentKey, messages, settings.temperature(),
+                return llama.chat(host, currentPort, currentKey, request, settings.temperature(),
                         settings.maxTokens(), settings.enableThinking(),
                         Duration.ofSeconds(settings.requestTimeoutSeconds()));
             } catch (RuntimeException e) {
                 throw new CompletionException(userFacing(e));
             }
         }, io);
+    }
+
+    public void addReadyListener(Runnable listener) {
+        if (listener == null) {
+            return;
+        }
+        readyListeners.add(listener);
+        if (state == AiState.READY) {
+            runReadyListener(listener);
+        }
+    }
+
+    private void notifyReady() {
+        for (Runnable listener : readyListeners) {
+            runReadyListener(listener);
+        }
+    }
+
+    private static void runReadyListener(Runnable listener) {
+        try {
+            listener.run();
+        } catch (RuntimeException e) {
+            LOGGER.warn("AI ready listener failed.", e);
+        }
     }
 
     public AiStatus status() {
@@ -320,6 +337,7 @@ public final class AiService {
             activeSignature = settings.launchSignature() + "|" + modelPath.toAbsolutePath();
             lastError = null;
             state = AiState.READY;
+            notifyReady();
             LOGGER.info("Player-O-Gram AI is ready at http://{}:{} (model {}, pid {}).",
                     LlamaProcess.connectHost(settings.host()), chosenPort, modelPath.getFileName(), started.pid());
         } catch (RuntimeException e) {
@@ -450,7 +468,7 @@ public final class AiService {
             int percent = (int) Math.min(100, done * 100 / total);
             int last = lastLogged.get();
             if ((percent >= last + 5 || percent == 100) && lastLogged.compareAndSet(last, percent)) {
-                LOGGER.info("{}: {}% ({}/{} MiB)", label, percent, done >> 20, total >> 20);
+                LOGGER.debug("{}: {}% ({}/{} MiB)", label, percent, done >> 20, total >> 20);
             }
             if (sink != null) {
                 int bucket = percent / 25;
@@ -536,7 +554,6 @@ public final class AiService {
             double temperature,
             int maxTokens,
             boolean enableThinking,
-            String systemPrompt,
             String extraLibraryPath,
             int startupTimeoutSeconds,
             int requestTimeoutSeconds,
@@ -564,7 +581,6 @@ public final class AiService {
                     Config.TEMPERATURE.get(),
                     Config.MAX_TOKENS.get(),
                     Config.ENABLE_THINKING.get(),
-                    Config.SYSTEM_PROMPT.get(),
                     Config.EXTRA_LIBRARY_PATH.get(),
                     Config.STARTUP_TIMEOUT_SECONDS.get(),
                     Config.REQUEST_TIMEOUT_SECONDS.get(),

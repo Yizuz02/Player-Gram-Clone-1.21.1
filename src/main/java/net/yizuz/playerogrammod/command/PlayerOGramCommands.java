@@ -7,7 +7,6 @@ import net.minecraft.commands.Commands;
 import com.mojang.brigadier.arguments.StringArgumentType;
 import net.minecraft.ChatFormatting;
 import net.minecraft.network.chat.Component;
-import net.minecraft.network.chat.MutableComponent;
 import net.minecraft.server.MinecraftServer;
 import net.neoforged.bus.api.SubscribeEvent;
 import net.neoforged.fml.common.EventBusSubscriber;
@@ -15,10 +14,11 @@ import net.neoforged.neoforge.event.RegisterCommandsEvent;
 import net.yizuz.playerogrammod.PlayerOGramMod;
 import net.yizuz.playerogrammod.ai.AiService;
 import net.yizuz.playerogrammod.ai.AiStatus;
-import net.yizuz.playerogrammod.text.MarkdownRenderer;
+import net.yizuz.playerogrammod.ai.LlamaClient;
+import net.yizuz.playerogrammod.chat.ChatPresenter;
+import net.yizuz.playerogrammod.prompt.SystemPromptProvider;
 
 import java.util.List;
-import java.util.function.Consumer;
 
 @EventBusSubscriber(modid = PlayerOGramMod.MOD_ID)
 public final class PlayerOGramCommands {
@@ -53,7 +53,7 @@ public final class PlayerOGramCommands {
         CommandSourceStack source = context.getSource();
         source.sendSuccess(() -> Component.literal(PREFIX
                 + "Installing the llama.cpp runtime and default Gemma model (first run downloads about 3 GiB)…"), false);
-        AiService.get().install(progressSink(source)).whenComplete((ignored, throwable) ->
+        AiService.get().install(null).whenComplete((ignored, throwable) ->
                 complete(source, throwable, "Runtime and model are installed."));
         return 1;
     }
@@ -62,7 +62,7 @@ public final class PlayerOGramCommands {
         CommandSourceStack source = context.getSource();
         source.sendSuccess(() -> Component.literal(PREFIX
                 + "Starting the AI (the first run may install the runtime and model)…"), false);
-        AiService.get().start(progressSink(source)).whenComplete((ignored, throwable) ->
+        AiService.get().start(null).whenComplete((ignored, throwable) ->
                 complete(source, throwable, "The AI is ready."));
         return 1;
     }
@@ -87,30 +87,18 @@ public final class PlayerOGramCommands {
         source.sendSystemMessage(promptLine);
         source.sendSuccess(() -> Component.literal(PREFIX + "Thinking…")
                 .withStyle(ChatFormatting.GRAY, ChatFormatting.ITALIC), false);
-        AiService.get().ask(prompt, progressSink(source)).whenComplete((answer, throwable) -> {
+        List<LlamaClient.Message> messages = List.of(
+                new LlamaClient.Message("system", SystemPromptProvider.instance().get()),
+                new LlamaClient.Message("user", prompt));
+        AiService.get().complete(messages).whenComplete((answer, throwable) -> {
             if (throwable != null) {
                 complete(source, throwable, "");
                 return;
             }
-            List<Component> lines = MarkdownRenderer.render(answer);
+            List<Component> lines = ChatPresenter.format(answer);
             runOnServer(source, () -> {
-                int limit = Math.min(lines.size(), 80);
-                for (int i = 0; i < limit; i++) {
-                    Component line = lines.get(i);
-                    if (i == 0) {
-                        MutableComponent prefixed = Component.empty()
-                                .append(Component.literal(PREFIX).withStyle(ChatFormatting.GRAY))
-                                .append(line);
-                        source.sendSuccess(() -> prefixed, false);
-                    } else {
-                        MutableComponent continued = Component.empty()
-                                .append(Component.literal("  "))
-                                .append(line);
-                        source.sendSuccess(() -> continued, false);
-                    }
-                }
-                if (lines.size() > limit) {
-                    source.sendSuccess(() -> Component.literal(PREFIX + "… (response truncated)"), false);
+                for (Component line : lines) {
+                    source.sendSuccess(() -> line, false);
                 }
             });
         });
@@ -125,11 +113,6 @@ public final class PlayerOGramCommands {
         }
         runOnServer(source, () ->
                 source.sendSuccess(() -> Component.literal(PREFIX + successMessage), false));
-    }
-
-    private static Consumer<String> progressSink(CommandSourceStack source) {
-        return message -> runOnServer(source,
-                () -> source.sendSuccess(() -> Component.literal(PREFIX + message), false));
     }
 
     private static void runOnServer(CommandSourceStack source, Runnable task) {

@@ -16,6 +16,7 @@ import net.neoforged.neoforge.event.BuildCreativeModeTabContentsEvent;
 import net.neoforged.neoforge.event.server.ServerStartedEvent;
 import net.neoforged.neoforge.event.server.ServerStoppingEvent;
 import net.yizuz.playerogrammod.ai.AiService;
+import net.yizuz.playerogrammod.chat.ChatConversationService;
 
 // The value here should match an entry in the META-INF/neoforge.mods.toml file
 @Mod(PlayerOGramMod.MOD_ID)
@@ -39,6 +40,7 @@ public class PlayerOGramMod {
         modContainer.registerConfig(ModConfig.Type.COMMON, Config.SPEC);
 
         AiService.get().init();
+        ChatConversationService.get().init();
     }
 
     private void commonSetup(FMLCommonSetupEvent event) {

@@ -5,6 +5,9 @@
 
   "playerogrammod.configuration.aiEnabled": "Enable AI",
   "playerogrammod.configuration.autoStart": "Start With Server",
+  "playerogrammod.configuration.chatPrefix": "Chat Prefix",
+  "playerogrammod.configuration.historyMessages": "History Messages",
+  "playerogrammod.configuration.historyMaxChars": "History Max Characters",
   "playerogrammod.configuration.autoInstallRuntime": "Auto-Install Runtime",
   "playerogrammod.configuration.autoDownloadModel": "Auto-Download Default Model",
   "playerogrammod.configuration.runtimeVersion": "Runtime Version",
@@ -22,7 +25,6 @@
   "playerogrammod.configuration.temperature": "Temperature",
   "playerogrammod.configuration.maxTokens": "Max Tokens",
   "playerogrammod.configuration.enableThinking": "Enable Thinking",
-  "playerogrammod.configuration.systemPrompt": "System Prompt",
   "playerogrammod.configuration.extraLibraryPath": "Extra Library Path",
   "playerogrammod.configuration.startupTimeoutSeconds": "Startup Timeout (seconds)",
   "playerogrammod.configuration.requestTimeoutSeconds": "Request Timeout (seconds)",

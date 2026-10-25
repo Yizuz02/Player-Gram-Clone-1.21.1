@@ -10,6 +10,19 @@ public final class Config {
                     "Disabling this while the AI is running stops the llama-server process.")
             .define("aiEnabled", true);
 
+    public static final ModConfigSpec.ConfigValue<String> CHAT_PREFIX = BUILDER
+            .comment("Prefix that addresses the AI in normal chat (case-insensitive).",
+                    "Messages without this prefix stay ordinary Minecraft chat.")
+            .define("chatPrefix", "AI:");
+
+    public static final ModConfigSpec.IntValue HISTORY_MESSAGES = BUILDER
+            .comment("Maximum user/assistant messages retained per player. 0 disables history.")
+            .defineInRange("historyMessages", 12, 0, 200);
+
+    public static final ModConfigSpec.IntValue HISTORY_MAX_CHARS = BUILDER
+            .comment("Maximum total characters of retained history per player. 0 disables the character cap.")
+            .defineInRange("historyMaxChars", 6000, 0, 100000);
+
     public static final ModConfigSpec.BooleanValue AUTO_START = BUILDER
             .comment("Start the AI when the server starts, provided the runtime and model are already installed.")
             .define("autoStart", false);
@@ -96,10 +109,6 @@ public final class Config {
                     "Disabled by default: reasoning can consume the whole maxTokens budget and leave the answer empty.",
                     "If enabled, increase maxTokens to leave room for the final answer.")
             .define("enableThinking", false);
-
-    public static final ModConfigSpec.ConfigValue<String> SYSTEM_PROMPT = BUILDER
-            .comment("Optional system prompt prepended to every chat request.")
-            .define("systemPrompt", "");
 
     public static final ModConfigSpec.IntValue STARTUP_TIMEOUT_SECONDS = BUILDER
             .comment("How long to wait for llama-server to load the model and pass /health.")

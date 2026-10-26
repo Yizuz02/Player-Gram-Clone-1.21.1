@@ -9,6 +9,7 @@ import net.neoforged.neoforge.network.PacketDistributor;
 import net.neoforged.neoforge.network.event.RegisterPayloadHandlersEvent;
 import net.neoforged.neoforge.network.handling.IPayloadContext;
 import net.neoforged.neoforge.network.registration.PayloadRegistrar;
+import net.yizuz.playerogrammod.flight.RingFlightManager;
 import net.yizuz.playerogrammod.ring.RingValidation;
 
 import java.util.concurrent.RejectedExecutionException;
@@ -28,6 +29,22 @@ public final class RingNetwork {
                 RingNetwork::handleSkinRequest);
         registrar.playToClient(RingSkinResponsePayload.TYPE, RingSkinResponsePayload.STREAM_CODEC,
                 RingNetwork::handleSkinResponse);
+        registrar.playToServer(RingFlightSetPayload.TYPE, RingFlightSetPayload.STREAM_CODEC,
+                RingNetwork::handleFlightSet);
+        registrar.playToClient(RingFlightStatePayload.TYPE, RingFlightStatePayload.STREAM_CODEC,
+                RingNetwork::handleFlightState);
+    }
+
+    private static void handleFlightSet(RingFlightSetPayload payload, IPayloadContext context) {
+        context.enqueueWork(() -> {
+            if (context.player() instanceof ServerPlayer player) {
+                RingFlightManager.get().request(player, payload.active());
+            }
+        });
+    }
+
+    private static void handleFlightState(RingFlightStatePayload payload, IPayloadContext context) {
+        context.enqueueWork(() -> RingFlightClientBridge.onState(payload));
     }
 
     private static void handleSave(RingConfigSavePayload payload, IPayloadContext context) {

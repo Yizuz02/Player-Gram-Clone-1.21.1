@@ -1,0 +1,44 @@
+{
+  "name": "flight_boost",
+  "author": "Player-O-Gram",
+  "version": 3,
+  "emote": {
+    "beginTick": 0,
+    "endTick": 40,
+    "isLoop": true,
+    "returnTick": 0,
+    "degrees": true,
+    "moves": [
+      {
+        "tick": 0,
+        "easing": "inoutsine",
+        "torso": { "pitch": 4, "yaw": 0, "roll": 0 },
+        "head": { "pitch": 0, "yaw": 0, "roll": 0 },
+        "rightArm": { "pitch": 42, "yaw": 0, "roll": 6 },
+        "leftArm": { "pitch": 42, "yaw": 0, "roll": -6 },
+        "rightLeg": { "pitch": 4, "yaw": 0, "roll": 1 },
+        "leftLeg": { "pitch": 4, "yaw": 0, "roll": -1 }
+      },
+      {
+        "tick": 20,
+        "easing": "inoutsine",
+        "torso": { "pitch": 7, "yaw": 0, "roll": 0.8 },
+        "head": { "pitch": 0, "yaw": 0, "roll": 0 },
+        "rightArm": { "pitch": 50, "yaw": 0, "roll": 8 },
+        "leftArm": { "pitch": 50, "yaw": 0, "roll": -8 },
+        "rightLeg": { "pitch": 7, "yaw": 0, "roll": 2 },
+        "leftLeg": { "pitch": 7, "yaw": 0, "roll": -2 }
+      },
+      {
+        "tick": 40,
+        "easing": "inoutsine",
+        "torso": { "pitch": 4, "yaw": 0, "roll": 0 },
+        "head": { "pitch": 0, "yaw": 0, "roll": 0 },
+        "rightArm": { "pitch": 42, "yaw": 0, "roll": 6 },
+        "leftArm": { "pitch": 42, "yaw": 0, "roll": -6 },
+        "rightLeg": { "pitch": 4, "yaw": 0, "roll": 1 },
+        "leftLeg": { "pitch": 4, "yaw": 0, "roll": -1 }
+      }
+    ]
+  }
+}

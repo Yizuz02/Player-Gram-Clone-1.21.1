@@ -38,6 +38,7 @@
   "playerogrammod.subtitle.ring_sound": "Lantern Ring hums",
 
   "tooltip.playerogrammod.lantern_ring.hold_shift": "Hold [Shift] to configure",
+  "tooltip.playerogrammod.lantern_ring.flight": "Double-tap [Jump] while held to fly",
   "tooltip.playerogrammod.lantern_ring.hologram": "Hologram: %s",
   "tooltip.playerogrammod.lantern_ring.hologram_owner": "Hologram: default name",
   "tooltip.playerogrammod.lantern_ring.skin": "Skin: %s",

@@ -86,12 +86,21 @@ Example mod description.
     ordering="NONE"
     side="BOTH"
 
-# Veil renders the hologram's scoped green materialization/dematerialization shader.
+# Veil renders the hologram and ring flight aura shaders.
 # It is only needed on the client; a dedicated server can run the mod without Veil.
 [[dependencies.${mod_id}]]
     modId="veil"
     type="required"
     versionRange="[${veil_version},)"
+    ordering="AFTER"
+    side="CLIENT"
+
+# Player Animator plays the superhero poses while the ring is flying.
+# It is client-side only.
+[[dependencies.${mod_id}]]
+    modId="playeranimator"
+    type="required"
+    versionRange="[${player_anim_version},)"
     ordering="AFTER"
     side="CLIENT"
 

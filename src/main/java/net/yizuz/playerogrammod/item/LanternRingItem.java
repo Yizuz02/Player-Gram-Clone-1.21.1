@@ -57,6 +57,8 @@ public final class LanternRingItem extends Item {
         RingConfig config = RingConfigs.get(stack);
         tooltip.add(Component.translatable("tooltip.playerogrammod.lantern_ring.hold_shift")
                 .withStyle(ChatFormatting.GRAY));
+        tooltip.add(Component.translatable("tooltip.playerogrammod.lantern_ring.flight")
+                .withStyle(ChatFormatting.DARK_AQUA));
         if (RingHoldState.isActiveFor(config.ringId())) {
             int length = 20;
             int filled = Math.min(length,

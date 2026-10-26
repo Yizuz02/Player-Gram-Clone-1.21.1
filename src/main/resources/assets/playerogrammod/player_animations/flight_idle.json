@@ -1,0 +1,41 @@
+{
+  "name": "flight_idle",
+  "author": "Player-O-Gram",
+  "version": 3,
+  "emote": {
+    "beginTick": 0,
+    "endTick": 80,
+    "isLoop": true,
+    "returnTick": 0,
+    "degrees": true,
+    "moves": [
+      {
+        "tick": 0,
+        "easing": "inoutsine",
+        "torso": { "pitch": 8, "yaw": 0, "roll": 0 },
+        "rightArm": { "pitch": -12, "yaw": 0, "roll": 48 },
+        "leftArm": { "pitch": -12, "yaw": 0, "roll": -48 },
+        "rightLeg": { "pitch": 6, "yaw": 0, "roll": 3 },
+        "leftLeg": { "pitch": 6, "yaw": 0, "roll": -3 }
+      },
+      {
+        "tick": 40,
+        "easing": "inoutsine",
+        "torso": { "pitch": 12, "yaw": 0, "roll": 2 },
+        "rightArm": { "pitch": -18, "yaw": 0, "roll": 56 },
+        "leftArm": { "pitch": -18, "yaw": 0, "roll": -56 },
+        "rightLeg": { "pitch": 10, "yaw": 0, "roll": 5 },
+        "leftLeg": { "pitch": 10, "yaw": 0, "roll": -5 }
+      },
+      {
+        "tick": 80,
+        "easing": "inoutsine",
+        "torso": { "pitch": 8, "yaw": 0, "roll": 0 },
+        "rightArm": { "pitch": -12, "yaw": 0, "roll": 48 },
+        "leftArm": { "pitch": -12, "yaw": 0, "roll": -48 },
+        "rightLeg": { "pitch": 6, "yaw": 0, "roll": 3 },
+        "leftLeg": { "pitch": 6, "yaw": 0, "roll": -3 }
+      }
+    ]
+  }
+}

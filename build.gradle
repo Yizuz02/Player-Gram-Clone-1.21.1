@@ -31,6 +31,10 @@ repositories {
         name = "BlameJared"
         url = "https://maven.blamejared.com"
     }
+    maven {
+        name = "KosmX"
+        url = "https://maven.kosmx.dev/"
+    }
 }
 
 base {
@@ -141,11 +145,17 @@ dependencies {
     // http://www.gradle.org/docs/current/userguide/artifact_dependencies_tutorial.html
     // http://www.gradle.org/docs/current/userguide/dependency_management.html
 
-    // Veil is used for the hologram render type/shader. It is a client-side dependency.
+    // Veil is used for the hologram and ring flight aura render types/shaders.
+    // It is a client-side dependency.
     implementation("foundry.veil:veil-neoforge-${minecraft_version}:${veil_version}") {
         exclude group: "maven.modrinth"
         exclude group: "me.fallenbreath"
     }
+
+    // Player Animator drives the ring flight poses. The Forge-named artifact is
+    // the NeoForge build for 1.21.1 and ships its own neoforge.mods.toml.
+    implementation("dev.kosmx.player-anim:player-animation-lib-forge:${player_anim_version}")
+    localRuntime("dev.kosmx.player-anim:player-animation-lib-forge:${player_anim_version}")
 }
 
 // This block of code expands all declared replace properties in the specified resource targets.
@@ -161,6 +171,7 @@ var generateModMetadata = tasks.register("generateModMetadata", ProcessResources
             mod_license            : mod_license,
             mod_version            : mod_version,
             veil_version           : veil_version,
+            player_anim_version    : player_anim_version,
     ]
     inputs.properties replaceProperties
     expand replaceProperties

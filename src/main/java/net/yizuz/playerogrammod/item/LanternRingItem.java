@@ -16,6 +16,8 @@ import net.minecraft.world.level.Level;
 import net.yizuz.playerogrammod.chat.ChatConversationService;
 import net.yizuz.playerogrammod.ring.RingConfig;
 import net.yizuz.playerogrammod.ring.RingConfigs;
+import net.yizuz.playerogrammod.ring.RingHoldState;
+import net.yizuz.playerogrammod.ring.RingTooltip;
 
 import java.util.List;
 import java.util.UUID;
@@ -23,6 +25,11 @@ import java.util.UUID;
 public final class LanternRingItem extends Item {
     public LanternRingItem(Properties properties) {
         super(properties);
+    }
+
+    @Override
+    public Component getName(ItemStack stack) {
+        return super.getName(stack).copy().withStyle(ChatFormatting.GREEN);
     }
 
     @Override
@@ -50,27 +57,22 @@ public final class LanternRingItem extends Item {
         RingConfig config = RingConfigs.get(stack);
         tooltip.add(Component.translatable("tooltip.playerogrammod.lantern_ring.hold_shift")
                 .withStyle(ChatFormatting.GRAY));
+        if (RingHoldState.isActiveFor(config.ringId())) {
+            int length = 20;
+            int filled = Math.min(length,
+                    (int) Math.ceil(RingHoldState.progressFor(config.ringId()) * length));
+            tooltip.add(Component.literal(RingTooltip.progressBar(length, filled))
+                    .withStyle(ChatFormatting.GREEN));
+        }
 
         if (config.displayName().isBlank()) {
             tooltip.add(Component.translatable("tooltip.playerogrammod.lantern_ring.hologram_owner")
                     .withStyle(ChatFormatting.DARK_GRAY));
         } else {
             tooltip.add(Component.translatable("tooltip.playerogrammod.lantern_ring.hologram",
-                    config.displayName()).withStyle(ChatFormatting.GRAY));
+                    config.displayName()).withStyle(ChatFormatting.DARK_GRAY));
         }
-
-        if (config.skinUsername().isBlank()) {
-            tooltip.add(Component.translatable("tooltip.playerogrammod.lantern_ring.skin_owner")
-                    .withStyle(ChatFormatting.DARK_GRAY));
-        } else {
-            tooltip.add(Component.translatable("tooltip.playerogrammod.lantern_ring.skin",
-                    config.skinUsername()).withStyle(ChatFormatting.GRAY));
-        }
-
-        tooltip.add(Component.translatable(config.customPrompt()
-                        ? "tooltip.playerogrammod.lantern_ring.prompt_custom"
-                        : "tooltip.playerogrammod.lantern_ring.prompt_default")
-                .withStyle(ChatFormatting.DARK_GRAY));
+        
     }
 
     @Override

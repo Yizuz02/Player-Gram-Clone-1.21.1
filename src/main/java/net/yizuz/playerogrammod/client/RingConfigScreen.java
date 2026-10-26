@@ -73,6 +73,8 @@ public final class RingConfigScreen extends Screen {
     private String requestedSkin;
     private long lastSkinRequestAt;
     private boolean skinLoading;
+    private float previewYaw;
+    private boolean previewDragging;
 
     private int panelLeft;
     private int panelTop;
@@ -156,10 +158,15 @@ public final class RingConfigScreen extends Screen {
         this.setInitialFocus(this.displayNameField);
 
         Minecraft minecraft = Minecraft.getInstance();
+        this.previewDragging = false;
         if (this.preview == null && minecraft.level != null) {
             this.preview = new HologramEntity(ModEntities.HOLOGRAM.get(), minecraft.level);
             this.preview.setCustomNameVisible(false);
             this.preview.tickCount = HologramVisuals.MATERIALIZE_TICKS;
+            this.preview.setYRot(0.0f);
+            this.preview.setYBodyRot(0.0f);
+            this.preview.setYHeadRot(0.0f);
+            this.preview.setXRot(0.0f);
             this.preview.setSkinUsername(desiredPreviewSkin());
             this.preview.setSkinTexture("");
             this.preview.setSkinTextureSignature("");
@@ -176,6 +183,9 @@ public final class RingConfigScreen extends Screen {
     @Override
     public void tick() {
         super.tick();
+        if (this.preview != null) {
+            this.preview.tickCount++;
+        }
         Minecraft minecraft = Minecraft.getInstance();
         Player player = minecraft.player;
         if (player == null || ringId == null) {
@@ -224,10 +234,10 @@ public final class RingConfigScreen extends Screen {
             return;
         }
 
-        float rotation = (float) ((Util.getMillis() % 12000L) / 12000.0 * 360.0);
-        this.preview.setYRot(rotation);
-        this.preview.setYBodyRot(rotation);
-        this.preview.setYHeadRot(rotation);
+        float rotation = this.previewYaw;
+        this.preview.setYRot(0.0f);
+        this.preview.setYBodyRot(0.0f);
+        this.preview.setYHeadRot(0.0f);
         this.preview.setXRot(0.0f);
         this.preview.setSkinUsername(desiredPreviewSkin());
 
@@ -236,7 +246,8 @@ public final class RingConfigScreen extends Screen {
                 this.previewTop + this.previewHeight - 12.0f, 50.0f);
         guiGraphics.pose().scale(52.0f, 52.0f, 52.0f);
         guiGraphics.pose().mulPose(Axis.ZP.rotationDegrees(180.0f));
-        this.previewRenderer.render(this.preview, rotation, partialTick,
+        guiGraphics.pose().mulPose(Axis.YP.rotationDegrees(rotation));
+        this.previewRenderer.render(this.preview, 0.0f, partialTick,
                 guiGraphics.pose(), guiGraphics.bufferSource(), LightTexture.FULL_BRIGHT);
         guiGraphics.pose().popPose();
         guiGraphics.flush();
@@ -421,6 +432,41 @@ public final class RingConfigScreen extends Screen {
     private String previewDisplayName() {
         String value = this.displayNameField == null ? "" : this.displayNameField.getValue().trim();
         return value.isEmpty() ? desiredPreviewSkin() : value;
+    }
+
+    @Override
+    public boolean mouseClicked(double mouseX, double mouseY, int button) {
+        if (super.mouseClicked(mouseX, mouseY, button)) {
+            return true;
+        }
+        if (button == 0 && isOverPreview(mouseX, mouseY)) {
+            this.previewDragging = true;
+            return true;
+        }
+        return false;
+    }
+
+    @Override
+    public boolean mouseDragged(double mouseX, double mouseY, int button,
+                                double dragX, double dragY) {
+        if (this.previewDragging && button == 0) {
+            this.previewYaw = (this.previewYaw + (float) dragX * 0.7f) % 360.0f;
+            return true;
+        }
+        return super.mouseDragged(mouseX, mouseY, button, dragX, dragY);
+    }
+
+    @Override
+    public boolean mouseReleased(double mouseX, double mouseY, int button) {
+        if (button == 0) {
+            this.previewDragging = false;
+        }
+        return super.mouseReleased(mouseX, mouseY, button);
+    }
+
+    private boolean isOverPreview(double mouseX, double mouseY) {
+        return mouseX >= this.previewLeft && mouseX < this.previewLeft + this.previewWidth
+                && mouseY >= this.previewTop && mouseY < this.previewTop + this.previewHeight;
     }
 
     private void setStatus(String text, int color) {

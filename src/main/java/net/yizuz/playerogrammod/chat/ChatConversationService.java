@@ -30,13 +30,11 @@ public final class ChatConversationService {
     private static final Logger LOGGER = LoggerFactory.getLogger(ChatConversationService.class);
     private static final ChatConversationService INSTANCE = new ChatConversationService();
 
-    private static final String ACTIVATED_MESSAGE = "The connection is established.";
-    private static final String DEACTIVATED_MESSAGE = "The connection is closed.";
     private static final String NOT_READY_MESSAGE =
-            "The connection isn't ready yet. Try again once the AI has finished preparing.";
+            "The AI isn't ready yet. Try again once it has finished preparing.";
     private static final String AI_DISABLED_MESSAGE = "The AI is currently disabled on this server.";
     private static final String RING_REQUIRED_MESSAGE =
-            "The Lantern Ring must be held to keep the connection open.";
+            "The Lantern Ring must be held to keep the session open.";
 
     private volatile MinecraftServer server;
     private volatile ConversationPipeline pipeline;
@@ -92,7 +90,7 @@ public final class ChatConversationService {
         RingSessionManager sessions = RingSessionManager.get();
 
         if (sessions.isActive(playerId)) {
-            deactivate(player, DEACTIVATED_MESSAGE, 0.8f);
+            deactivate(player, null, 0.8f);
             return;
         }
 
@@ -116,17 +114,22 @@ public final class ChatConversationService {
             config = config.withRingId(UUID.randomUUID());
             LOGGER.info("Reassigned a copied ring identity for {} to {}", playerId, config.ringId());
         }
+        if (config.displayName().isBlank()) {
+            config = config.withSettings(player.getGameProfile().getName(), config.skinUsername(),
+                    config.customPrompt(), config.systemPrompt());
+        }
         RingConfigs.set(ringStack, config);
+        String displayName = config.effectiveDisplayName(player.getGameProfile().getName());
 
-        UUID token = sessions.activate(playerId, config.ringId(), RingConfigs.effectivePrompt(config));
+        UUID token = sessions.activate(playerId, config.ringId(),
+                RingConfigs.effectivePrompt(config), displayName);
         if (token == null) {
             return;
         }
-        LOGGER.info("Ring session activated for {} (hand={}, ring={}).",
-                playerId, hand, config.ringId());
+        LOGGER.info("Ring session activated for {} (hand={}, ring={}, display={}).",
+                playerId, hand, config.ringId(), displayName);
         HologramService.get().spawn(currentServer, player, token, config);
         playRingSound(player, 1.0f);
-        ChatPresenter.sendStatus(currentServer, playerId, ACTIVATED_MESSAGE);
         generateIntroduction(currentServer, playerId, token);
     }
 
@@ -182,7 +185,9 @@ public final class ChatConversationService {
         if (session == null || session.ringId() == null || !session.ringId().equals(config.ringId())) {
             return;
         }
-        RingSessionManager.get().updatePrompt(playerId, config.ringId(), RingConfigs.effectivePrompt(config));
+        RingSessionManager.get().updateSettings(playerId, config.ringId(),
+                RingConfigs.effectivePrompt(config),
+                config.effectiveDisplayName(player.getGameProfile().getName()));
         HologramService.get().updateConfig(playerId, config);
     }
 
@@ -227,7 +232,9 @@ public final class ChatConversationService {
         HologramService.get().beginDespawn(playerId);
         LOGGER.info("Ring session deactivated for {}.", playerId);
         playRingSound(player, pitch);
-        ChatPresenter.sendStatus(server, playerId, message);
+        if (message != null && !message.isBlank()) {
+            ChatPresenter.sendStatus(server, playerId, message);
+        }
     }
 
     private void generateIntroduction(MinecraftServer currentServer, UUID playerId, UUID token) {
@@ -248,7 +255,8 @@ public final class ChatConversationService {
             try {
                 currentServer.execute(() -> {
                     if (RingSessionManager.get().isCurrent(playerId, token)) {
-                        ChatPresenter.sendDialogue(currentServer, playerId, text);
+                        ChatPresenter.sendDialogue(currentServer, playerId,
+                                RingSessionManager.get().displayName(playerId), text);
                     }
                 });
             } catch (RejectedExecutionException e) {
@@ -295,7 +303,8 @@ public final class ChatConversationService {
     private final class Sink implements ConversationPipeline.ChatSink {
         @Override
         public void sendDialogue(UUID playerId, String markdown) {
-            ChatPresenter.sendDialogue(server, playerId, markdown);
+            ChatPresenter.sendDialogue(server, playerId,
+                    RingSessionManager.get().displayName(playerId), markdown);
         }
 
         @Override

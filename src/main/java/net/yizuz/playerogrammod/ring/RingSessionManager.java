@@ -10,7 +10,7 @@ import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.CopyOnWriteArrayList;
 
 public final class RingSessionManager {
-    public record Session(UUID token, UUID ringId, String systemPrompt) {
+    public record Session(UUID token, UUID ringId, String systemPrompt, String displayName) {
     }
 
     public interface Listener {
@@ -28,15 +28,19 @@ public final class RingSessionManager {
     }
 
     public UUID activate(UUID playerId) {
-        return activate(playerId, null, null);
+        return activate(playerId, null, null, null);
     }
 
     public UUID activate(UUID playerId, UUID ringId, String systemPrompt) {
+        return activate(playerId, ringId, systemPrompt, null);
+    }
+
+    public UUID activate(UUID playerId, UUID ringId, String systemPrompt, String displayName) {
         if (playerId == null) {
             return null;
         }
         UUID token = UUID.randomUUID();
-        Session session = new Session(token, ringId, systemPrompt);
+        Session session = new Session(token, ringId, systemPrompt, displayName);
         Session existing = sessions.putIfAbsent(playerId, session);
         if (existing != null) {
             return null;
@@ -80,13 +84,26 @@ public final class RingSessionManager {
         return session == null ? null : session.systemPrompt();
     }
 
+    public String displayName(UUID playerId) {
+        Session session = session(playerId);
+        return session == null ? null : session.displayName();
+    }
+
     public boolean updatePrompt(UUID playerId, UUID ringId, String systemPrompt) {
+        Session current = session(playerId);
+        if (current == null) {
+            return false;
+        }
+        return updateSettings(playerId, ringId, systemPrompt, current.displayName());
+    }
+
+    public boolean updateSettings(UUID playerId, UUID ringId, String systemPrompt, String displayName) {
         Session current = session(playerId);
         if (current == null || (ringId != null && !ringId.equals(current.ringId()))) {
             return false;
         }
         return sessions.replace(playerId, current,
-                new Session(current.token(), current.ringId(), systemPrompt));
+                new Session(current.token(), current.ringId(), systemPrompt, displayName));
     }
 
     public boolean ringIdActiveElsewhere(UUID playerId, UUID ringId) {

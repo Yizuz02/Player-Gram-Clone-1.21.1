@@ -14,18 +14,23 @@ import java.util.List;
 import java.util.UUID;
 
 public final class ChatPresenter {
-    public static final String AI_PREFIX = "[Player-O-Gram] ";
+    public static final String AI_PREFIX = ChatNaming.prefix(null);
     private static final Logger LOGGER = LoggerFactory.getLogger(ChatPresenter.class);
     private static final int MAX_LINES = 80;
 
     public static List<Component> format(String markdown) {
+        return format(null, markdown);
+    }
+
+    public static List<Component> format(String displayName, String markdown) {
+        String prefix = ChatNaming.prefix(displayName);
         List<Component> rendered = MarkdownRenderer.render(markdown);
         List<Component> lines = new ArrayList<>();
         int limit = Math.min(rendered.size(), MAX_LINES);
         for (int i = 0; i < limit; i++) {
             if (i == 0) {
                 MutableComponent first = Component.empty()
-                        .append(Component.literal(AI_PREFIX).withStyle(ChatFormatting.GOLD))
+                        .append(Component.literal(prefix).withStyle(ChatFormatting.GOLD))
                         .append(rendered.get(i));
                 lines.add(first);
             } else {
@@ -37,13 +42,18 @@ public final class ChatPresenter {
         }
         if (rendered.size() > limit) {
             lines.add(Component.empty()
-                    .append(Component.literal(AI_PREFIX).withStyle(ChatFormatting.GRAY))
+                    .append(Component.literal(prefix).withStyle(ChatFormatting.GRAY))
                     .append(Component.literal("… (response truncated)").withStyle(ChatFormatting.GRAY)));
         }
         return lines;
     }
 
     public static void sendDialogue(MinecraftServer server, UUID playerId, String markdown) {
+        sendDialogue(server, playerId, null, markdown);
+    }
+
+    public static void sendDialogue(MinecraftServer server, UUID playerId, String displayName,
+                                    String markdown) {
         if (server == null || playerId == null || markdown == null || markdown.isBlank()) {
             return;
         }
@@ -51,10 +61,11 @@ public final class ChatPresenter {
         if (player == null) {
             return;
         }
-        for (Component line : format(markdown)) {
+        for (Component line : format(displayName, markdown)) {
             player.sendSystemMessage(line);
         }
-        LOGGER.info("[Player-O-Gram -> {}] {}", player.getGameProfile().getName(), markdown);
+        LOGGER.info("[{} -> {}] {}", ChatNaming.displayName(displayName),
+                player.getGameProfile().getName(), markdown);
     }
 
     public static void sendPlayerMessage(MinecraftServer server, ServerPlayer player, String text) {

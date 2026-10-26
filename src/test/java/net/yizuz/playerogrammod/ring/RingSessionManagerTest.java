@@ -91,6 +91,36 @@ class RingSessionManagerTest {
         assertNotNull(token);
         assertNull(manager.session(player).ringId());
         assertNull(manager.prompt(player));
+        assertNull(manager.displayName(player));
+    }
+
+    @Test
+    void sessionCarriesDisplayNameAndSettingsCanBeUpdated() {
+        RingSessionManager manager = new RingSessionManager();
+        UUID player = UUID.randomUUID();
+        UUID ring = UUID.randomUUID();
+
+        manager.activate(player, ring, "prompt", "Guide");
+
+        assertEquals("Guide", manager.displayName(player));
+        assertTrue(manager.updateSettings(player, ring, "new prompt", "Companion"));
+        assertEquals("Companion", manager.displayName(player));
+        assertEquals("new prompt", manager.prompt(player));
+        assertFalse(manager.updateSettings(player, UUID.randomUUID(), "wrong", "Wrong"));
+        assertEquals("Companion", manager.displayName(player));
+    }
+
+    @Test
+    void promptUpdatePreservesDisplayName() {
+        RingSessionManager manager = new RingSessionManager();
+        UUID player = UUID.randomUUID();
+        UUID ring = UUID.randomUUID();
+
+        manager.activate(player, ring, "first", "Guide");
+        assertTrue(manager.updatePrompt(player, ring, "second"));
+
+        assertEquals("second", manager.prompt(player));
+        assertEquals("Guide", manager.displayName(player));
     }
 
     @Test

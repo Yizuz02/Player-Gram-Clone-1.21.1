@@ -2,10 +2,8 @@ package net.yizuz.playerogrammod.client;
 
 import net.minecraft.Util;
 import net.minecraft.client.Minecraft;
-import net.minecraft.client.gui.GuiGraphics;
 import net.minecraft.client.gui.screens.Screen;
 import net.minecraft.client.gui.screens.inventory.AbstractContainerScreen;
-import net.minecraft.network.chat.Component;
 import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.inventory.Slot;
 import net.minecraft.world.item.ItemStack;
@@ -18,6 +16,7 @@ import net.yizuz.playerogrammod.PlayerOGramMod;
 import net.yizuz.playerogrammod.item.LanternRingItem;
 import net.yizuz.playerogrammod.ring.RingConfig;
 import net.yizuz.playerogrammod.ring.RingConfigs;
+import net.yizuz.playerogrammod.ring.RingHoldState;
 
 import java.util.UUID;
 
@@ -31,6 +30,7 @@ public final class RingConfigClientEvents {
         Player player = minecraft.player;
         if (!(minecraft.screen instanceof AbstractContainerScreen<?> screen) || player == null) {
             HOLD.cancel();
+            RingHoldState.clear();
             return;
         }
 
@@ -46,37 +46,38 @@ public final class RingConfigClientEvents {
             }
         }
 
-        if (HOLD.update(ringId, Screen.hasShiftDown(), Util.getMillis())) {
+        long now = Util.getMillis();
+        boolean open = HOLD.update(ringId, Screen.hasShiftDown(), now);
+        if (HOLD.isTracking()) {
+            RingHoldState.update(ringId, HOLD.progress(now), true);
+        } else {
+            RingHoldState.clear();
+        }
+        if (open) {
             HOLD.opened();
+            RingHoldState.clear();
             minecraft.setScreen(new RingConfigScreen(screen, config, player.getGameProfile().getName()));
         }
     }
 
+    /**
+     * Runs before the screen renders its tooltip, keeping the lore progress bar
+     * smooth without a separate inventory overlay.
+     */
     @SubscribeEvent
-    public static void onRenderScreen(ScreenEvent.Render.Post event) {
-        if (!(event.getScreen() instanceof AbstractContainerScreen<?>) || !HOLD.isTracking()) {
-            return;
+    public static void onRenderPre(ScreenEvent.Render.Pre event) {
+        if (HOLD.isTracking()) {
+            RingHoldState.update(HOLD.ringId(), HOLD.progress(Util.getMillis()), true);
+        } else {
+            RingHoldState.clear();
         }
-        float progress = HOLD.progress(Util.getMillis());
-        if (progress <= 0.0f) {
-            return;
-        }
-        GuiGraphics guiGraphics = event.getGuiGraphics();
-        int x = event.getMouseX() + 10;
-        int y = event.getMouseY() - 12;
-        int filled = Math.max(0, Math.min(50, (int) (progress * 50.0f)));
-        guiGraphics.fill(x - 2, y - 2, x + 52, y + 8, 0xCC000000);
-        guiGraphics.fill(x, y, x + 50, y + 6, 0x663CFF88);
-        guiGraphics.fill(x, y, x + filled, y + 6, 0xFF3CFF88);
-        guiGraphics.drawString(Minecraft.getInstance().font,
-                Component.translatable("screen.playerogrammod.ring_config.hold"),
-                x, y + 10, 0xFFFFFFFF, true);
     }
 
     @SubscribeEvent
     public static void onMousePressed(ScreenEvent.MouseButtonPressed.Pre event) {
         if (event.getScreen() instanceof AbstractContainerScreen<?>) {
             HOLD.click(Screen.hasShiftDown());
+            RingHoldState.clear();
         }
     }
 
@@ -84,6 +85,7 @@ public final class RingConfigClientEvents {
     public static void onScreenClosing(ScreenEvent.Closing event) {
         if (event.getScreen() instanceof AbstractContainerScreen<?>) {
             HOLD.cancel();
+            RingHoldState.clear();
         }
     }
 

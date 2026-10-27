@@ -1,6 +1,7 @@
 package net.yizuz.playerogrammod.client.flight;
 
 import net.minecraft.client.Minecraft;
+import net.minecraft.client.gui.GuiGraphics;
 import net.minecraft.client.player.LocalPlayer;
 import net.minecraft.network.chat.Component;
 import net.minecraft.util.Mth;
@@ -12,11 +13,13 @@ import net.neoforged.neoforge.client.event.ClientPlayerNetworkEvent;
 import net.neoforged.neoforge.client.event.ClientTickEvent;
 import net.neoforged.neoforge.client.event.ComputeFovModifierEvent;
 import net.neoforged.neoforge.client.event.RegisterKeyMappingsEvent;
+import net.neoforged.neoforge.client.event.RenderGuiEvent;
 import net.neoforged.neoforge.client.event.RenderLevelStageEvent;
 import net.neoforged.neoforge.client.event.RenderPlayerEvent;
 import net.neoforged.neoforge.event.tick.PlayerTickEvent;
 import net.neoforged.neoforge.network.PacketDistributor;
 import net.yizuz.playerogrammod.PlayerOGramMod;
+import net.yizuz.playerogrammod.flight.RingFlightRules;
 import net.yizuz.playerogrammod.network.RingFlightClientBridge;
 import net.yizuz.playerogrammod.network.RingFlightHoverSetPayload;
 
@@ -50,7 +53,7 @@ public final class RingFlightClientEvents {
                 continue;
             }
             LocalPlayer player = minecraft.player;
-            if (player == null || !RingFlightClientState.isActive(player.getUUID())) {
+            if (player == null || !RingFlightRules.hasRing(player)) {
                 continue;
             }
             boolean hover = !RingFlightClientState.isHovering(player.getUUID());
@@ -89,6 +92,25 @@ public final class RingFlightClientEvents {
     @SubscribeEvent
     public static void onRenderLevelStage(RenderLevelStageEvent event) {
         RingFlightPostOutline.onRenderStage(event);
+    }
+
+    @SubscribeEvent
+    public static void onRenderGui(RenderGuiEvent.Post event) {
+        Minecraft minecraft = Minecraft.getInstance();
+        LocalPlayer player = minecraft.player;
+        if (player == null || minecraft.options.hideGui
+                || !RingFlightRules.hasRing(player)) {
+            return;
+        }
+        boolean hover = RingFlightClientState.isHovering(player.getUUID());
+        Component label = Component.translatable(hover
+                ? "playerogrammod.hud.hover"
+                : "playerogrammod.hud.flying");
+        GuiGraphics graphics = event.getGuiGraphics();
+        int width = minecraft.font.width(label) + 10;
+        graphics.fill(4, 4, 4 + width, 17, 0x90000000);
+        graphics.drawString(minecraft.font, label, 9, 7,
+                hover ? 0xFF6CFF9A : 0xFF9FDFFF, true);
     }
 
     @SubscribeEvent

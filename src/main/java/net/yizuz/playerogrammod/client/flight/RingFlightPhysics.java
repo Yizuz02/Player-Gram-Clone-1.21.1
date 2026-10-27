@@ -18,9 +18,9 @@ public final class RingFlightPhysics {
     private static final double VERTICAL_ACCEL = 0.10D;
     private static final double HOVER_DRAG = 0.82D;
     private static final double VERTICAL_DRAG = 0.90D;
-    private static final double HOVER_SPEED = 0.62D;
-    private static final double HOVER_SPRINT_SPEED = 1.15D;
-    private static final double HOVER_VERTICAL_SPEED = 0.22D;
+    private static final double HOVER_SPEED = 0.28D;
+    private static final double HOVER_SPRINT_SPEED = 0.52D;
+    private static final double HOVER_VERTICAL_SPEED = 0.16D;
 
     private static boolean noGravityApplied;
     private static LocalPlayer lastPlayer;
@@ -117,7 +117,7 @@ public final class RingFlightPhysics {
         boolean right = inputAllowed && minecraft.options.keyRight.isDown();
         boolean ascend = inputAllowed && minecraft.options.keyJump.isDown();
         boolean descend = inputAllowed && minecraft.options.keyShift.isDown();
-        boolean sprint = player.isSprinting() || (inputAllowed && minecraft.options.keySprint.isDown());
+        boolean sprint = inputAllowed && minecraft.options.keySprint.isDown();
 
         double forwardInput = (forward ? 1.0 : 0.0) - (backward ? 1.0 : 0.0);
         double strafeInput = (right ? 1.0 : 0.0) - (left ? 1.0 : 0.0);

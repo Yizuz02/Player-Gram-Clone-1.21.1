@@ -40,6 +40,8 @@
   "key.playerogrammod.hover": "Toggle Flight Hover",
   "playerogrammod.flight.hover_on": "Hover mode: on",
   "playerogrammod.flight.hover_off": "Hover mode: off",
+  "playerogrammod.hud.flying": "Ring: Flying",
+  "playerogrammod.hud.hover": "Ring: Hover",
 
   "tooltip.playerogrammod.lantern_ring.hold_shift": "Hold [Shift] to configure",
   "tooltip.playerogrammod.lantern_ring.flight": "Double-tap [Jump] while held to fly",

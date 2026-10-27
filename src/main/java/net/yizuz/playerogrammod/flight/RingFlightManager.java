@@ -18,6 +18,7 @@ import java.util.concurrent.ConcurrentHashMap;
  */
 public final class RingFlightManager {
     private static final String NO_GRAVITY_KEY = "playerogrammod_ring_flight_no_gravity";
+    private static final String HOVER_KEY = "playerogrammod_ring_flight_hover";
     private static final int LANDING_GRACE_TICKS = 10;
     private static final RingFlightManager INSTANCE = new RingFlightManager();
 
@@ -40,13 +41,24 @@ public final class RingFlightManager {
         if (player == null) {
             return;
         }
-        FlightState state = states.get(player.getUUID());
-        if (state == null) {
-            broadcastHover(player.getUUID(), false);
+        if (!RingFlightRules.hasRing(player)) {
+            PacketDistributor.sendToPlayer(player,
+                    new RingFlightHoverStatePayload(player.getUUID(), hoverPreference(player)));
             return;
         }
-        state.hover = hover;
-        broadcastHover(player.getUUID(), hover);
+        player.getPersistentData().putBoolean(HOVER_KEY, hover);
+        FlightState state = states.get(player.getUUID());
+        if (state != null) {
+            state.hover = hover;
+            broadcastHover(player.getUUID(), hover);
+        } else {
+            PacketDistributor.sendToPlayer(player,
+                    new RingFlightHoverStatePayload(player.getUUID(), hover));
+        }
+    }
+
+    public boolean hoverPreference(ServerPlayer player) {
+        return player != null && player.getPersistentData().getBoolean(HOVER_KEY);
     }
 
     public List<UUID> activePlayers() {
@@ -70,12 +82,15 @@ public final class RingFlightManager {
 
     private void activate(ServerPlayer player) {
         UUID playerId = player.getUUID();
-        if (states.containsKey(playerId)) {
+        FlightState existing = states.get(playerId);
+        if (existing != null) {
             broadcast(playerId, true);
+            broadcastHover(playerId, existing.hover);
             return;
         }
 
-        FlightState state = new FlightState(player.isNoGravity());
+        boolean hover = player.getPersistentData().getBoolean(HOVER_KEY);
+        FlightState state = new FlightState(player.isNoGravity(), hover);
         states.put(playerId, state);
         player.setNoGravity(true);
         player.getPersistentData().putBoolean(NO_GRAVITY_KEY, true);
@@ -84,7 +99,7 @@ public final class RingFlightManager {
             player.stopFallFlying();
         }
         broadcast(playerId, true);
-        broadcastHover(playerId, false);
+        broadcastHover(playerId, hover);
     }
 
     public void deactivate(ServerPlayer player) {
@@ -100,7 +115,6 @@ public final class RingFlightManager {
             player.getPersistentData().remove(NO_GRAVITY_KEY);
         }
         broadcast(player.getUUID(), false);
-        broadcastHover(player.getUUID(), false);
     }
 
     private void deactivate(UUID playerId, MinecraftServer server) {
@@ -114,7 +128,6 @@ public final class RingFlightManager {
             player.getPersistentData().remove(NO_GRAVITY_KEY);
         }
         broadcast(playerId, false);
-        broadcastHover(playerId, false);
     }
 
     public void tick(MinecraftServer server) {
@@ -159,7 +172,6 @@ public final class RingFlightManager {
         }
         if (state != null || hadPersistentFlag) {
             broadcast(player.getUUID(), false);
-            broadcastHover(player.getUUID(), false);
         }
     }
 
@@ -190,8 +202,9 @@ public final class RingFlightManager {
         private int ticks;
         private boolean hover;
 
-        private FlightState(boolean previousNoGravity) {
+        private FlightState(boolean previousNoGravity, boolean hover) {
             this.previousNoGravity = previousNoGravity;
+            this.hover = hover;
         }
     }
 

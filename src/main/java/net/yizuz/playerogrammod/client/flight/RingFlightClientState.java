@@ -20,7 +20,6 @@ public final class RingFlightClientState {
             ACTIVE.add(playerId);
         } else {
             ACTIVE.remove(playerId);
-            HOVER.remove(playerId);
         }
     }
 

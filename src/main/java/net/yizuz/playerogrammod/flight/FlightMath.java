@@ -16,17 +16,19 @@ public final class FlightMath {
             horizontalRight = Vec3.ZERO;
         }
 
-        Vec3 forwardDirection;
+        Vec3 direction;
         if (forward > 0.0) {
-            forwardDirection = normalizedLook;
+            direction = normalizedLook.scale(forward);
         } else if (forward < 0.0) {
             Vec3 backward = new Vec3(-normalizedLook.x, 0.0, -normalizedLook.z);
-            forwardDirection = backward.lengthSqr() > 1.0E-6 ? backward.normalize() : Vec3.ZERO;
+            direction = backward.lengthSqr() > 1.0E-6
+                    ? backward.normalize().scale(-forward)
+                    : Vec3.ZERO;
         } else {
-            forwardDirection = Vec3.ZERO;
+            direction = Vec3.ZERO;
         }
 
-        Vec3 direction = forwardDirection.scale(forward).add(horizontalRight.scale(strafe));
+        direction = direction.add(horizontalRight.scale(strafe));
         return direction.lengthSqr() > 1.0E-6 ? direction.normalize() : Vec3.ZERO;
     }
 

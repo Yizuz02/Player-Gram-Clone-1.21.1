@@ -28,6 +28,8 @@ public final class RingFlightServerEvents {
         }
         RingFlightManager manager = RingFlightManager.get();
         manager.resetOnLogin(player);
+        PacketDistributor.sendToPlayer(player,
+                new RingFlightHoverStatePayload(player.getUUID(), manager.hoverPreference(player)));
         for (UUID active : manager.activePlayers()) {
             PacketDistributor.sendToPlayer(player, new RingFlightStatePayload(active, true));
             PacketDistributor.sendToPlayer(player,

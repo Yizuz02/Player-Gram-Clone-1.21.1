@@ -2,9 +2,12 @@ package net.yizuz.playerogrammod.flight;
 
 import net.minecraft.server.MinecraftServer;
 import net.minecraft.server.level.ServerPlayer;
+import net.minecraft.sounds.SoundEvent;
+import net.minecraft.sounds.SoundSource;
 import net.neoforged.neoforge.network.PacketDistributor;
 import net.yizuz.playerogrammod.network.RingFlightHoverStatePayload;
 import net.yizuz.playerogrammod.network.RingFlightStatePayload;
+import net.yizuz.playerogrammod.sound.ModSounds;
 
 import java.util.List;
 import java.util.Map;
@@ -46,8 +49,8 @@ public final class RingFlightManager {
                     new RingFlightHoverStatePayload(player.getUUID(), hoverPreference(player)));
             return;
         }
-        player.getPersistentData().putBoolean(HOVER_KEY, hover);
         FlightState state = states.get(player.getUUID());
+        player.getPersistentData().putBoolean(HOVER_KEY, hover);
         if (state != null) {
             state.hover = hover;
             broadcastHover(player.getUUID(), hover);
@@ -98,6 +101,7 @@ public final class RingFlightManager {
         if (player.isFallFlying()) {
             player.stopFallFlying();
         }
+        playSound(player, ModSounds.RING_START_FLYING.get(), 1.0F, 1.0F);
         broadcast(playerId, true);
         broadcastHover(playerId, hover);
     }
@@ -191,6 +195,11 @@ public final class RingFlightManager {
 
     private void broadcast(UUID playerId, boolean active) {
         PacketDistributor.sendToAllPlayers(new RingFlightStatePayload(playerId, active));
+    }
+
+    private static void playSound(ServerPlayer player, SoundEvent sound, float volume, float pitch) {
+        player.serverLevel().playSound(null, player.blockPosition(), sound,
+                SoundSource.PLAYERS, volume, pitch);
     }
 
     private void broadcastHover(UUID playerId, boolean hover) {

@@ -2,6 +2,8 @@ package net.yizuz.playerogrammod.network;
 
 import net.minecraft.server.level.ServerPlayer;
 import net.yizuz.playerogrammod.chat.ChatConversationService;
+import net.yizuz.playerogrammod.personality.PersonalityProfile;
+import net.yizuz.playerogrammod.personality.PersonalityTest;
 import net.yizuz.playerogrammod.ring.RingConfig;
 import net.yizuz.playerogrammod.ring.RingConfigs;
 import net.yizuz.playerogrammod.ring.RingValidation;
@@ -30,19 +32,36 @@ public final class RingConfigService {
                     "This ring is no longer in your inventory, or its identity is ambiguous.");
         }
 
+        PersonalityProfile personality = PersonalityProfile.fromJson(payload.personalityJson());
+        String personalityError = PersonalityTest.validate(personality);
+        if (personalityError != null) {
+            return new Result(false, personalityError);
+        }
+
+        RingConfig current = match.config();
+        String prompt = payload.systemPrompt();
+        boolean customPrompt = payload.customPrompt();
+        if (personality.completed()) {
+            RingConfig named = current.withSettings(
+                    payload.displayName(), payload.skinUsername(), true, "");
+            prompt = personality.buildSystemPrompt(
+                    named.effectiveDisplayName(player.getGameProfile().getName()));
+            customPrompt = true;
+        }
+
         String error = RingValidation.validateSettings(
-                payload.displayName(), payload.skinUsername(), payload.systemPrompt());
+                payload.displayName(), payload.skinUsername(), prompt);
         if (error != null) {
             return new Result(false, error);
         }
 
-        RingConfig current = match.config();
         RingConfig updated = current.withSettings(
-                payload.displayName(), payload.skinUsername(),
-                payload.customPrompt(), payload.systemPrompt());
+                payload.displayName(), payload.skinUsername(), customPrompt, prompt)
+                .withPersonality(personality);
         RingConfigs.set(match.stack(), updated);
         ChatConversationService.get().onRingConfigSaved(player, updated);
-        LOGGER.info("Ring {} configuration saved for {}", updated.ringId(), player.getUUID());
+        LOGGER.info("Ring {} configuration saved for {} (personality={}).",
+                updated.ringId(), player.getUUID(), personality.completed());
         return new Result(true, "Settings saved.");
     }
 

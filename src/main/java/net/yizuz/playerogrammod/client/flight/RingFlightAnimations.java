@@ -15,6 +15,7 @@ import net.minecraft.client.Minecraft;
 import net.minecraft.client.multiplayer.ClientLevel;
 import net.minecraft.client.player.AbstractClientPlayer;
 import net.minecraft.resources.ResourceLocation;
+import net.minecraft.world.phys.Vec3;
 import net.yizuz.playerogrammod.PlayerOGramMod;
 
 import java.util.Optional;
@@ -30,6 +31,8 @@ public final class RingFlightAnimations {
             ResourceLocation.fromNamespaceAndPath(PlayerOGramMod.MOD_ID, "flight_idle");
     private static final ResourceLocation BOOST =
             ResourceLocation.fromNamespaceAndPath(PlayerOGramMod.MOD_ID, "flight_boost");
+    private static final ResourceLocation BACKWARD =
+            ResourceLocation.fromNamespaceAndPath(PlayerOGramMod.MOD_ID, "flight_backward");
     private static final int LAYER_PRIORITY = 5000;
     private static final int FADE_TICKS = 6;
 
@@ -45,6 +48,15 @@ public final class RingFlightAnimations {
                         Vec3f.ZERO));
             });
             layer.addModifierBefore(headAdjustment);
+            AdjustmentModifier hoverLimbs = new AdjustmentModifier(part -> {
+                if (!RingFlightClientState.isActive(player.getUUID())
+                        || !RingFlightClientState.isHovering(player.getUUID())) {
+                    return Optional.empty();
+                }
+                return hoverLimbSwing(part, player).map(rotation ->
+                        new AdjustmentModifier.PartModifier(rotation, Vec3f.ZERO));
+            });
+            layer.addModifierBefore(hoverLimbs);
             stack.addAnimLayer(LAYER_PRIORITY, layer);
             PlayerAnimationAccess.getPlayerAssociatedData(player).set(LAYER_ID, layer);
         });
@@ -85,7 +97,31 @@ public final class RingFlightAnimations {
         if (RingFlightClientState.isHovering(player.getUUID())) {
             return IDLE;
         }
+        if (RingFlightPose.isMovingBackward(player)) {
+            return BACKWARD;
+        }
         return RingFlightPose.isMoving(player) ? BOOST : IDLE;
+    }
+
+    private static Optional<Vec3f> hoverLimbSwing(String part, AbstractClientPlayer player) {
+        if (!"rightArm".equals(part) && !"leftArm".equals(part)
+                && !"rightLeg".equals(part) && !"leftLeg".equals(part)) {
+            return Optional.empty();
+        }
+        Vec3 movement = RingFlightPose.movement(player);
+        double horizontal = Math.sqrt(movement.x * movement.x + movement.z * movement.z);
+        double strength = Math.min(1.0D, Math.max(0.0D, (horizontal - 0.05D) / 0.15D));
+        if (strength <= 0.0D) {
+            return Optional.empty();
+        }
+        double yaw = Math.toRadians(player.yBodyRot);
+        double forwardX = -Math.sin(yaw);
+        double forwardZ = Math.cos(yaw);
+        double forwardNorm = (movement.x * forwardX + movement.z * forwardZ) / horizontal;
+        double rightNorm = (movement.x * -forwardZ + movement.z * forwardX) / horizontal;
+        float pitch = (float) Math.toRadians(15.0D * forwardNorm * strength);
+        float roll = (float) Math.toRadians(-15.0D * rightNorm * strength);
+        return Optional.of(new Vec3f(pitch, 0.0F, roll));
     }
 
     @SuppressWarnings("unchecked")

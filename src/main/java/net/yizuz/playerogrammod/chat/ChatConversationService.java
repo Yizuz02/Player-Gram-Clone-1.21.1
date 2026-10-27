@@ -13,6 +13,7 @@ import net.yizuz.playerogrammod.ai.AiStatus;
 import net.yizuz.playerogrammod.hologram.HologramService;
 import net.yizuz.playerogrammod.item.LanternRingItem;
 import net.yizuz.playerogrammod.item.ModItems;
+import net.yizuz.playerogrammod.prompt.HologramPrompt;
 import net.yizuz.playerogrammod.prompt.SystemPromptProvider;
 import net.yizuz.playerogrammod.ring.RingConfig;
 import net.yizuz.playerogrammod.ring.RingConfigs;
@@ -120,9 +121,10 @@ public final class ChatConversationService {
         }
         RingConfigs.set(ringStack, config);
         String displayName = config.effectiveDisplayName(player.getGameProfile().getName());
-
-        UUID token = sessions.activate(playerId, config.ringId(),
+        String prompt = HologramPrompt.withName(
                 RingConfigs.effectivePrompt(config), displayName);
+
+        UUID token = sessions.activate(playerId, config.ringId(), prompt, displayName);
         if (token == null) {
             return;
         }
@@ -186,9 +188,15 @@ public final class ChatConversationService {
             return;
         }
         RingSessionManager.get().updateSettings(playerId, config.ringId(),
-                RingConfigs.effectivePrompt(config),
+                displayPrompt(config, player),
                 config.effectiveDisplayName(player.getGameProfile().getName()));
         HologramService.get().updateConfig(playerId, config);
+    }
+
+    private static String displayPrompt(RingConfig config, ServerPlayer player) {
+        String prompt = RingConfigs.effectivePrompt(config);
+        String displayName = config.effectiveDisplayName(player.getGameProfile().getName());
+        return HologramPrompt.withName(prompt, displayName);
     }
 
     public void onPlayerLogout(ServerPlayer player) {

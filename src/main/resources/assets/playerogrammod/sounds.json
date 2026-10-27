@@ -8,5 +8,45 @@
         "pitch": 1.0
       }
     ]
+  },
+  "ring_hover": {
+    "subtitle": "playerogrammod.subtitle.ring_hover",
+    "sounds": [
+      {
+        "name": "playerogrammod:ring_hover"
+      }
+    ]
+  },
+  "ring_start_flying": {
+    "subtitle": "playerogrammod.subtitle.ring_start_flying",
+    "sounds": [
+      {
+        "name": "playerogrammod:ring_start_flying"
+      }
+    ]
+  },
+  "ring_impulse_flying": {
+    "subtitle": "playerogrammod.subtitle.ring_impulse_flying",
+    "sounds": [
+      {
+        "name": "playerogrammod:ring_impulse_flying"
+      }
+    ]
+  },
+  "ring_button_press": {
+    "subtitle": "playerogrammod.subtitle.ring_button_press",
+    "sounds": [
+      {
+        "name": "playerogrammod:ring_button_press"
+      }
+    ]
+  },
+  "ring_button_hover": {
+    "subtitle": "playerogrammod.subtitle.ring_button_hover",
+    "sounds": [
+      {
+        "name": "playerogrammod:ring_button_hover"
+      }
+    ]
   }
 }

@@ -16,7 +16,7 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 class RingFlightAnimationJsonTest {
     @Test
     void flightAnimationsLoadWithExpectedNames() throws Exception {
-        for (String name : List.of("flight_idle", "flight_boost")) {
+        for (String name : List.of("flight_idle", "flight_boost", "flight_backward")) {
             var stream = getClass().getResourceAsStream(
                     "/assets/playerogrammod/player_animations/" + name + ".json");
             assertNotNull(stream, name + " resource missing");

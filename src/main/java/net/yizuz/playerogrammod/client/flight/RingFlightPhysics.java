@@ -47,9 +47,11 @@ public final class RingFlightPhysics {
 
     public static void postTick(LocalPlayer player) {
         if (!RingFlightClientState.isActive(player.getUUID())) {
+            RingFlightAccelerationSound.reset();
             return;
         }
         if (RingFlightClientState.isHovering(player.getUUID())) {
+            RingFlightAccelerationSound.reset();
             applyHoverMovement(player);
             return;
         }
@@ -70,6 +72,8 @@ public final class RingFlightPhysics {
 
         double forwardInput = (forward ? 1.0 : 0.0) - (backward ? 1.0 : 0.0);
         double strafeInput = (right ? 1.0 : 0.0) - (left ? 1.0 : 0.0);
+        boolean accelerating = forwardInput != 0.0 || strafeInput != 0.0;
+        RingFlightAccelerationSound.tick(player, accelerating, boost);
         Vec3 thrust = FlightMath.thrustDirection(player.getLookAngle(), forwardInput, strafeInput);
 
         Vec3 velocity = player.getDeltaMovement();
@@ -106,6 +110,7 @@ public final class RingFlightPhysics {
         }
         noGravityApplied = false;
         lastPlayer = null;
+        RingFlightAccelerationSound.reset();
     }
 
     private static void applyHoverMovement(LocalPlayer player) {

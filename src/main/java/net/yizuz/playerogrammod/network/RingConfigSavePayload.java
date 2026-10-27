@@ -14,8 +14,10 @@ public record RingConfigSavePayload(
         String displayName,
         String skinUsername,
         String systemPrompt,
-        boolean customPrompt
+        boolean customPrompt,
+        String personalityJson
 ) implements CustomPacketPayload {
+    public static final int MAX_PERSONALITY_JSON = 16000;
     public static final Type<RingConfigSavePayload> TYPE = new Type<>(
             ResourceLocation.fromNamespaceAndPath(PlayerOGramMod.MOD_ID, "ring_config_save"));
 
@@ -27,13 +29,15 @@ public record RingConfigSavePayload(
                         buf.writeUtf(payload.skinUsername(), RingValidation.MAX_SKIN_USERNAME);
                         buf.writeUtf(payload.systemPrompt(), RingValidation.MAX_PROMPT);
                         buf.writeBoolean(payload.customPrompt());
+                        buf.writeUtf(payload.personalityJson(), MAX_PERSONALITY_JSON);
                     },
                     buf -> new RingConfigSavePayload(
                             buf.readUUID(),
                             buf.readUtf(RingValidation.MAX_DISPLAY_NAME),
                             buf.readUtf(RingValidation.MAX_SKIN_USERNAME),
                             buf.readUtf(RingValidation.MAX_PROMPT),
-                            buf.readBoolean()));
+                            buf.readBoolean(),
+                            buf.readUtf(MAX_PERSONALITY_JSON)));
 
     @Override
     public Type<? extends CustomPacketPayload> type() {

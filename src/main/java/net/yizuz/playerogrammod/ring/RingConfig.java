@@ -2,6 +2,7 @@ package net.yizuz.playerogrammod.ring;
 
 import com.google.gson.JsonObject;
 import com.google.gson.JsonParser;
+import net.yizuz.playerogrammod.personality.PersonalityProfile;
 
 import java.util.UUID;
 
@@ -17,16 +18,25 @@ public record RingConfig(
         String displayName,
         String skinUsername,
         boolean customPrompt,
-        String systemPrompt
+        String systemPrompt,
+        PersonalityProfile personality
 ) {
     public static final UUID UNASSIGNED = new UUID(0L, 0L);
-    public static final RingConfig DEFAULT = new RingConfig(UNASSIGNED, "", "", false, "");
+    public static final RingConfig DEFAULT = new RingConfig(
+            UNASSIGNED, "", "", false, "", PersonalityProfile.defaultProfile());
+
+    public RingConfig(UUID ringId, String displayName, String skinUsername,
+                      boolean customPrompt, String systemPrompt) {
+        this(ringId, displayName, skinUsername, customPrompt, systemPrompt,
+                PersonalityProfile.defaultProfile());
+    }
 
     public RingConfig {
         ringId = ringId == null ? UNASSIGNED : ringId;
         displayName = displayName == null ? "" : displayName;
         skinUsername = skinUsername == null ? "" : skinUsername;
         systemPrompt = systemPrompt == null ? "" : systemPrompt;
+        personality = personality == null ? PersonalityProfile.defaultProfile() : personality;
     }
 
     public boolean hasRingId() {
@@ -34,12 +44,16 @@ public record RingConfig(
     }
 
     public RingConfig withRingId(UUID id) {
-        return new RingConfig(id, displayName, skinUsername, customPrompt, systemPrompt);
+        return new RingConfig(id, displayName, skinUsername, customPrompt, systemPrompt, personality);
     }
 
     public RingConfig withSettings(String displayName, String skinUsername,
                                    boolean customPrompt, String systemPrompt) {
-        return new RingConfig(ringId, displayName, skinUsername, customPrompt, systemPrompt);
+        return new RingConfig(ringId, displayName, skinUsername, customPrompt, systemPrompt, personality);
+    }
+
+    public RingConfig withPersonality(PersonalityProfile personality) {
+        return new RingConfig(ringId, displayName, skinUsername, customPrompt, systemPrompt, personality);
     }
 
     public String effectivePrompt(String defaultPrompt) {
@@ -67,6 +81,7 @@ public record RingConfig(
         json.addProperty("skinUsername", skinUsername);
         json.addProperty("customPrompt", customPrompt);
         json.addProperty("systemPrompt", systemPrompt);
+        json.addProperty("personality", personality.toJson());
         return json.toString();
     }
 
@@ -90,7 +105,8 @@ public record RingConfig(
                     string(json, "skinUsername"),
                     json.has("customPrompt") && !json.get("customPrompt").isJsonNull()
                             && json.get("customPrompt").getAsBoolean(),
-                    string(json, "systemPrompt"));
+                    string(json, "systemPrompt"),
+                    PersonalityProfile.fromJson(string(json, "personality")));
         } catch (RuntimeException e) {
             return DEFAULT;
         }

@@ -22,7 +22,7 @@ public final class RingFlightOutline {
         }
 
         float lean = RingFlightPose.leanDegrees(player);
-        if (lean < 1.0F) {
+        if (Math.abs(lean) < 1.0F) {
             return;
         }
 

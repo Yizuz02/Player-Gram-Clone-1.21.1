@@ -45,6 +45,7 @@ public final class RingFlightClientEvents {
         handleHoverToggle(minecraft);
         RingFlightClientController.tick(minecraft);
         RingFlightAnimations.tick(minecraft);
+        RingFlightLoopSound.tick(minecraft);
     }
 
     private static void handleHoverToggle(Minecraft minecraft) {
@@ -130,6 +131,7 @@ public final class RingFlightClientEvents {
         RingFlightPhysics.reset();
         RingFlightClientController.reset();
         RingFlightOutline.reset();
+        RingFlightLoopSound.clear();
     }
 
     @SubscribeEvent
@@ -138,6 +140,7 @@ public final class RingFlightClientEvents {
         RingFlightPhysics.reset();
         RingFlightClientController.reset();
         RingFlightOutline.reset();
+        RingFlightLoopSound.clear();
     }
 
     private RingFlightClientEvents() {

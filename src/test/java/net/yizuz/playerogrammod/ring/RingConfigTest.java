@@ -1,7 +1,10 @@
 package net.yizuz.playerogrammod.ring;
 
+import net.yizuz.playerogrammod.personality.PersonalityProfile;
 import org.junit.jupiter.api.Test;
 
+import java.util.List;
+import java.util.Map;
 import java.util.UUID;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
@@ -70,5 +73,34 @@ class RingConfigTest {
         RingConfig customName = config.withSettings("Guide", "", false, "");
         assertEquals("Steve", customName.effectiveSkinUsername("Steve"));
         assertEquals("Guide", customName.effectiveDisplayName("Steve"));
+    }
+
+    @Test
+    void personalityBelongsToTheRingAndSurvivesSettingsChanges() {
+        PersonalityProfile profile = PersonalityProfile.fromAnswers(Map.of(
+                "languages", List.of("english"),
+                "preferred_language", List.of("english")));
+        UUID id = UUID.randomUUID();
+        RingConfig config = new RingConfig(id, "Guide", "Notch", false, "")
+                .withPersonality(profile);
+
+        assertEquals(profile, config.personality());
+        assertEquals(profile, config.withSettings("New name", "Alex", true, "Prompt")
+                .personality());
+        assertEquals(profile, config.withRingId(UUID.randomUUID()).personality());
+        assertEquals(profile, RingConfig.fromJson(config.toJson()).personality());
+        assertNotEquals(profile, RingConfig.DEFAULT.personality());
+    }
+
+    @Test
+    void existingJsonWithoutAPersonalityKeepsItsManualPromptAndGetsTheDefaultProfile() {
+        UUID id = UUID.randomUUID();
+        String legacy = "{\"ringId\":\"" + id + "\",\"displayName\":\"Guide\","
+                + "\"skinUsername\":\"\",\"customPrompt\":true,"
+                + "\"systemPrompt\":\"Legacy prompt\"}";
+        RingConfig config = RingConfig.fromJson(legacy);
+        assertFalse(config.personality().completed());
+        assertEquals(PersonalityProfile.defaultProfile(), config.personality());
+        assertEquals("Legacy prompt", config.effectivePrompt("server-default"));
     }
 }

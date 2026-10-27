@@ -17,6 +17,17 @@ public final class RingFlightPose {
         return speed(player) > MOVING_SPEED;
     }
 
+    public static boolean isMovingBackward(AbstractClientPlayer player) {
+        Vec3 movement = movement(player);
+        double horizontalSq = movement.x * movement.x + movement.z * movement.z;
+        if (horizontalSq <= MOVING_SPEED * MOVING_SPEED) {
+            return false;
+        }
+        double yaw = Math.toRadians(player.getYRot());
+        double dot = movement.x * -Math.sin(yaw) + movement.z * Math.cos(yaw);
+        return dot < -0.15D * Math.sqrt(horizontalSq);
+    }
+
     public static double speed(AbstractClientPlayer player) {
         return movement(player).length();
     }
@@ -56,6 +67,9 @@ public final class RingFlightPose {
         if (blend <= 0.0F) {
             return 0.0F;
         }
+        if (isMovingBackward(player)) {
+            return -50.0F * blend;
+        }
         return (90.0F - elevationDegrees(player)) * blend;
     }
 
@@ -63,7 +77,14 @@ public final class RingFlightPose {
         if (RingFlightClientState.isHovering(player.getUUID())) {
             return 0.0F;
         }
-        return (float) Math.toRadians(-90.0D * moveBlend(player));
+        float blend = moveBlend(player);
+        if (blend <= 0.0F) {
+            return 0.0F;
+        }
+        if (isMovingBackward(player)) {
+            return (float) Math.toRadians(50.0D * blend);
+        }
+        return (float) Math.toRadians(-90.0D * blend);
     }
 
     private RingFlightPose() {

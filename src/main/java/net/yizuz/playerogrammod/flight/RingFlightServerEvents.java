@@ -9,6 +9,7 @@ import net.neoforged.neoforge.event.server.ServerStoppingEvent;
 import net.neoforged.neoforge.event.tick.ServerTickEvent;
 import net.neoforged.neoforge.network.PacketDistributor;
 import net.yizuz.playerogrammod.PlayerOGramMod;
+import net.yizuz.playerogrammod.network.RingFlightHoverStatePayload;
 import net.yizuz.playerogrammod.network.RingFlightStatePayload;
 
 import java.util.UUID;
@@ -29,6 +30,8 @@ public final class RingFlightServerEvents {
         manager.resetOnLogin(player);
         for (UUID active : manager.activePlayers()) {
             PacketDistributor.sendToPlayer(player, new RingFlightStatePayload(active, true));
+            PacketDistributor.sendToPlayer(player,
+                    new RingFlightHoverStatePayload(active, manager.isHovering(active)));
         }
     }
 

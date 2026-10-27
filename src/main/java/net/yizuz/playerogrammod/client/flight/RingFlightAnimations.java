@@ -37,7 +37,7 @@ public final class RingFlightAnimations {
         PlayerAnimationAccess.REGISTER_ANIMATION_EVENT.register((player, stack) -> {
             ModifierLayer<KeyframeAnimationPlayer> layer = new ModifierLayer<>();
             AdjustmentModifier headAdjustment = new AdjustmentModifier(part -> {
-                if (!"head".equals(part)) {
+                if (!"head".equals(part) || RingFlightClientState.isHovering(player.getUUID())) {
                     return Optional.empty();
                 }
                 return Optional.of(new AdjustmentModifier.PartModifier(
@@ -82,6 +82,9 @@ public final class RingFlightAnimations {
     }
 
     private static ResourceLocation chooseAnimation(AbstractClientPlayer player) {
+        if (RingFlightClientState.isHovering(player.getUUID())) {
+            return IDLE;
+        }
         return RingFlightPose.isMoving(player) ? BOOST : IDLE;
     }
 

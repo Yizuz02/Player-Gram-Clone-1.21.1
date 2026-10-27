@@ -2,6 +2,7 @@ package net.yizuz.playerogrammod.client.flight;
 
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.player.LocalPlayer;
+import net.minecraft.network.chat.Component;
 import net.minecraft.util.Mth;
 import net.neoforged.api.distmarker.Dist;
 import net.neoforged.bus.api.SubscribeEvent;
@@ -10,10 +11,14 @@ import net.neoforged.fml.event.lifecycle.FMLClientSetupEvent;
 import net.neoforged.neoforge.client.event.ClientPlayerNetworkEvent;
 import net.neoforged.neoforge.client.event.ClientTickEvent;
 import net.neoforged.neoforge.client.event.ComputeFovModifierEvent;
+import net.neoforged.neoforge.client.event.RegisterKeyMappingsEvent;
+import net.neoforged.neoforge.client.event.RenderLevelStageEvent;
 import net.neoforged.neoforge.client.event.RenderPlayerEvent;
 import net.neoforged.neoforge.event.tick.PlayerTickEvent;
+import net.neoforged.neoforge.network.PacketDistributor;
 import net.yizuz.playerogrammod.PlayerOGramMod;
 import net.yizuz.playerogrammod.network.RingFlightClientBridge;
+import net.yizuz.playerogrammod.network.RingFlightHoverSetPayload;
 
 @EventBusSubscriber(modid = PlayerOGramMod.MOD_ID, value = Dist.CLIENT)
 public final class RingFlightClientEvents {
@@ -21,16 +26,40 @@ public final class RingFlightClientEvents {
     public static void onClientSetup(FMLClientSetupEvent event) {
         RingFlightClientBridge.setHandler(payload ->
                 RingFlightClientState.setActive(payload.playerId(), payload.active()));
+        RingFlightClientBridge.setHoverHandler(payload ->
+                RingFlightClientState.setHovering(payload.playerId(), payload.hover()));
         RingFlightAnimations.register();
+    }
+
+    @SubscribeEvent
+    public static void onRegisterKeys(RegisterKeyMappingsEvent event) {
+        event.register(RingFlightKeybinds.HOVER);
     }
 
     @SubscribeEvent
     public static void onClientTick(ClientTickEvent.Post event) {
         Minecraft minecraft = Minecraft.getInstance();
+        handleHoverToggle(minecraft);
         RingFlightClientController.tick(minecraft);
-        RingFlightOutline.tick(minecraft);
-        RingFlightParticles.tick(minecraft);
         RingFlightAnimations.tick(minecraft);
+    }
+
+    private static void handleHoverToggle(Minecraft minecraft) {
+        while (RingFlightKeybinds.HOVER.consumeClick()) {
+            if (minecraft.screen != null) {
+                continue;
+            }
+            LocalPlayer player = minecraft.player;
+            if (player == null || !RingFlightClientState.isActive(player.getUUID())) {
+                continue;
+            }
+            boolean hover = !RingFlightClientState.isHovering(player.getUUID());
+            RingFlightClientState.setHovering(player.getUUID(), hover);
+            PacketDistributor.sendToServer(new RingFlightHoverSetPayload(hover));
+            player.displayClientMessage(Component.translatable(hover
+                    ? "playerogrammod.flight.hover_on"
+                    : "playerogrammod.flight.hover_off"), true);
+        }
     }
 
     @SubscribeEvent
@@ -58,9 +87,15 @@ public final class RingFlightClientEvents {
     }
 
     @SubscribeEvent
+    public static void onRenderLevelStage(RenderLevelStageEvent event) {
+        RingFlightPostOutline.onRenderStage(event);
+    }
+
+    @SubscribeEvent
     public static void onComputeFov(ComputeFovModifierEvent event) {
         if (event.getPlayer() instanceof LocalPlayer player
-                && RingFlightClientState.isActive(player.getUUID())) {
+                && RingFlightClientState.isActive(player.getUUID())
+                && !RingFlightClientState.isHovering(player.getUUID())) {
             double speed = player.getDeltaMovement().length();
             float boost = Mth.clamp((float) (speed / 3.0), 0.0F, 1.0F);
             event.setNewFovModifier(event.getNewFovModifier() * (1.0F + boost * 0.16F));

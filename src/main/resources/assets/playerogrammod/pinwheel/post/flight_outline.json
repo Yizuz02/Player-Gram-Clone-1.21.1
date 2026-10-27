@@ -1,0 +1,16 @@
+{
+  "stages": [
+    {
+      "type": "veil:blit",
+      "shader": "playerogrammod:flight_outline",
+      "in": "minecraft:main",
+      "clear": true
+    }
+  ],
+  "textures": {
+    "MaskSampler": {
+      "type": "framebuffer",
+      "name": "playerogrammod:flight_mask"
+    }
+  }
+}

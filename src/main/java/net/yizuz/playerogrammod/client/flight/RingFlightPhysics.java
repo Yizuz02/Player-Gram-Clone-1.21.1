@@ -18,6 +18,9 @@ public final class RingFlightPhysics {
     private static final double VERTICAL_ACCEL = 0.10D;
     private static final double HOVER_DRAG = 0.82D;
     private static final double VERTICAL_DRAG = 0.90D;
+    private static final double HOVER_SPEED = 0.62D;
+    private static final double HOVER_SPRINT_SPEED = 1.15D;
+    private static final double HOVER_VERTICAL_SPEED = 0.22D;
 
     private static boolean noGravityApplied;
     private static LocalPlayer lastPlayer;
@@ -44,6 +47,10 @@ public final class RingFlightPhysics {
 
     public static void postTick(LocalPlayer player) {
         if (!RingFlightClientState.isActive(player.getUUID())) {
+            return;
+        }
+        if (RingFlightClientState.isHovering(player.getUUID())) {
+            applyHoverMovement(player);
             return;
         }
         player.resetFallDistance();
@@ -99,6 +106,37 @@ public final class RingFlightPhysics {
         }
         noGravityApplied = false;
         lastPlayer = null;
+    }
+
+    private static void applyHoverMovement(LocalPlayer player) {
+        Minecraft minecraft = Minecraft.getInstance();
+        boolean inputAllowed = minecraft.screen == null;
+        boolean forward = inputAllowed && minecraft.options.keyUp.isDown();
+        boolean backward = inputAllowed && minecraft.options.keyDown.isDown();
+        boolean left = inputAllowed && minecraft.options.keyLeft.isDown();
+        boolean right = inputAllowed && minecraft.options.keyRight.isDown();
+        boolean ascend = inputAllowed && minecraft.options.keyJump.isDown();
+        boolean descend = inputAllowed && minecraft.options.keyShift.isDown();
+        boolean sprint = player.isSprinting() || (inputAllowed && minecraft.options.keySprint.isDown());
+
+        double forwardInput = (forward ? 1.0 : 0.0) - (backward ? 1.0 : 0.0);
+        double strafeInput = (right ? 1.0 : 0.0) - (left ? 1.0 : 0.0);
+        double yaw = Math.toRadians(player.getYRot());
+        Vec3 forwardDirection = new Vec3(-Math.sin(yaw), 0.0, Math.cos(yaw));
+        Vec3 rightDirection = new Vec3(-forwardDirection.z, 0.0, forwardDirection.x);
+        Vec3 horizontal = forwardDirection.scale(forwardInput).add(rightDirection.scale(strafeInput));
+        if (horizontal.lengthSqr() > 1.0) {
+            horizontal = horizontal.normalize();
+        }
+
+        double horizontalSpeed = sprint ? HOVER_SPRINT_SPEED : HOVER_SPEED;
+        double verticalSpeed = ascend ? HOVER_VERTICAL_SPEED : descend ? -HOVER_VERTICAL_SPEED : 0.0;
+        player.setDeltaMovement(horizontal.x * horizontalSpeed, verticalSpeed,
+                horizontal.z * horizontalSpeed);
+        player.resetFallDistance();
+        if (player.isFallFlying()) {
+            player.stopFallFlying();
+        }
     }
 
     private static void restoreGravity(LocalPlayer player) {

@@ -10,6 +10,7 @@ import java.util.concurrent.ConcurrentHashMap;
  */
 public final class RingFlightClientState {
     private static final Set<UUID> ACTIVE = ConcurrentHashMap.newKeySet();
+    private static final Set<UUID> HOVER = ConcurrentHashMap.newKeySet();
 
     public static void setActive(UUID playerId, boolean active) {
         if (playerId == null) {
@@ -19,6 +20,7 @@ public final class RingFlightClientState {
             ACTIVE.add(playerId);
         } else {
             ACTIVE.remove(playerId);
+            HOVER.remove(playerId);
         }
     }
 
@@ -26,8 +28,28 @@ public final class RingFlightClientState {
         return playerId != null && ACTIVE.contains(playerId);
     }
 
+    public static void setHovering(UUID playerId, boolean hover) {
+        if (playerId == null) {
+            return;
+        }
+        if (hover) {
+            HOVER.add(playerId);
+        } else {
+            HOVER.remove(playerId);
+        }
+    }
+
+    public static boolean isHovering(UUID playerId) {
+        return playerId != null && HOVER.contains(playerId);
+    }
+
+    public static boolean hasAny() {
+        return !ACTIVE.isEmpty();
+    }
+
     public static void clear() {
         ACTIVE.clear();
+        HOVER.clear();
     }
 
     private RingFlightClientState() {

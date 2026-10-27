@@ -1,0 +1,15 @@
+{
+  "parent": "minecraft:item/generated",
+  "loader": "neoforge:separate_transforms",
+  "base": {
+    "parent": "playerogrammod:item/lantern_ring_model"
+  },
+  "perspectives": {
+    "gui": {
+      "parent": "playerogrammod:item/lantern_ring_item"
+    },
+    "fixed": {
+      "parent": "playerogrammod:item/lantern_ring_item"
+    }
+  }
+}

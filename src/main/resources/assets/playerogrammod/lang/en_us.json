@@ -36,6 +36,10 @@
 
   "item.playerogrammod.lantern_ring": "Lantern Ring",
   "playerogrammod.subtitle.ring_sound": "Lantern Ring hums",
+  "key.categories.playerogrammod": "Player-O-Gram",
+  "key.playerogrammod.hover": "Toggle Flight Hover",
+  "playerogrammod.flight.hover_on": "Hover mode: on",
+  "playerogrammod.flight.hover_off": "Hover mode: off",
 
   "tooltip.playerogrammod.lantern_ring.hold_shift": "Hold [Shift] to configure",
   "tooltip.playerogrammod.lantern_ring.flight": "Double-tap [Jump] while held to fly",

@@ -19,7 +19,6 @@ public final class RingFlightClientController {
     private static boolean lastJumpDown;
     private static long lastJumpTapMs;
     private static int activeTicks;
-    private static boolean wasActive;
 
     public static void tick(Minecraft minecraft) {
         LocalPlayer player = minecraft.player;
@@ -48,7 +47,6 @@ public final class RingFlightClientController {
             long now = Util.getMillis();
             if (RingFlightRules.canFly(player) && now - lastJumpTapMs <= DOUBLE_TAP_WINDOW_MS) {
                 setFlight(player, !RingFlightClientState.isActive(player.getUUID()));
-                active = RingFlightClientState.isActive(player.getUUID());
                 lastJumpTapMs = 0L;
             } else if (RingFlightRules.hasRing(player)) {
                 lastJumpTapMs = now;
@@ -57,11 +55,6 @@ public final class RingFlightClientController {
             }
         }
         lastJumpDown = jumpDown;
-
-        if (active && !wasActive) {
-            RingFlightParticles.burst(player);
-        }
-        wasActive = active;
     }
 
     private static void setFlight(LocalPlayer player, boolean active) {
@@ -76,7 +69,6 @@ public final class RingFlightClientController {
         lastJumpDown = false;
         lastJumpTapMs = 0L;
         activeTicks = 0;
-        wasActive = false;
     }
 
     private RingFlightClientController() {

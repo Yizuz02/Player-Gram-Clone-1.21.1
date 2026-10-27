@@ -49,6 +49,9 @@ public final class RingFlightPose {
     }
 
     public static float leanDegrees(AbstractClientPlayer player) {
+        if (RingFlightClientState.isHovering(player.getUUID())) {
+            return 0.0F;
+        }
         float blend = moveBlend(player);
         if (blend <= 0.0F) {
             return 0.0F;
@@ -57,6 +60,9 @@ public final class RingFlightPose {
     }
 
     public static float headPitchRadians(AbstractClientPlayer player) {
+        if (RingFlightClientState.isHovering(player.getUUID())) {
+            return 0.0F;
+        }
         return (float) Math.toRadians(-90.0D * moveBlend(player));
     }
 

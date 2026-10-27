@@ -3,6 +3,7 @@ package net.yizuz.playerogrammod.flight;
 import net.minecraft.server.MinecraftServer;
 import net.minecraft.server.level.ServerPlayer;
 import net.neoforged.neoforge.network.PacketDistributor;
+import net.yizuz.playerogrammod.network.RingFlightHoverStatePayload;
 import net.yizuz.playerogrammod.network.RingFlightStatePayload;
 
 import java.util.List;
@@ -28,6 +29,24 @@ public final class RingFlightManager {
 
     public boolean isActive(UUID playerId) {
         return playerId != null && states.containsKey(playerId);
+    }
+
+    public boolean isHovering(UUID playerId) {
+        FlightState state = playerId == null ? null : states.get(playerId);
+        return state != null && state.hover;
+    }
+
+    public void requestHover(ServerPlayer player, boolean hover) {
+        if (player == null) {
+            return;
+        }
+        FlightState state = states.get(player.getUUID());
+        if (state == null) {
+            broadcastHover(player.getUUID(), false);
+            return;
+        }
+        state.hover = hover;
+        broadcastHover(player.getUUID(), hover);
     }
 
     public List<UUID> activePlayers() {
@@ -65,6 +84,7 @@ public final class RingFlightManager {
             player.stopFallFlying();
         }
         broadcast(playerId, true);
+        broadcastHover(playerId, false);
     }
 
     public void deactivate(ServerPlayer player) {
@@ -80,6 +100,7 @@ public final class RingFlightManager {
             player.getPersistentData().remove(NO_GRAVITY_KEY);
         }
         broadcast(player.getUUID(), false);
+        broadcastHover(player.getUUID(), false);
     }
 
     private void deactivate(UUID playerId, MinecraftServer server) {
@@ -93,6 +114,7 @@ public final class RingFlightManager {
             player.getPersistentData().remove(NO_GRAVITY_KEY);
         }
         broadcast(playerId, false);
+        broadcastHover(playerId, false);
     }
 
     public void tick(MinecraftServer server) {
@@ -137,6 +159,7 @@ public final class RingFlightManager {
         }
         if (state != null || hadPersistentFlag) {
             broadcast(player.getUUID(), false);
+            broadcastHover(player.getUUID(), false);
         }
     }
 
@@ -158,9 +181,14 @@ public final class RingFlightManager {
         PacketDistributor.sendToAllPlayers(new RingFlightStatePayload(playerId, active));
     }
 
+    private void broadcastHover(UUID playerId, boolean hover) {
+        PacketDistributor.sendToAllPlayers(new RingFlightHoverStatePayload(playerId, hover));
+    }
+
     private static final class FlightState {
         private final boolean previousNoGravity;
         private int ticks;
+        private boolean hover;
 
         private FlightState(boolean previousNoGravity) {
             this.previousNoGravity = previousNoGravity;

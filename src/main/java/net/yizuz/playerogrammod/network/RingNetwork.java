@@ -33,6 +33,22 @@ public final class RingNetwork {
                 RingNetwork::handleFlightSet);
         registrar.playToClient(RingFlightStatePayload.TYPE, RingFlightStatePayload.STREAM_CODEC,
                 RingNetwork::handleFlightState);
+        registrar.playToServer(RingFlightHoverSetPayload.TYPE, RingFlightHoverSetPayload.STREAM_CODEC,
+                RingNetwork::handleFlightHoverSet);
+        registrar.playToClient(RingFlightHoverStatePayload.TYPE, RingFlightHoverStatePayload.STREAM_CODEC,
+                RingNetwork::handleFlightHoverState);
+    }
+
+    private static void handleFlightHoverSet(RingFlightHoverSetPayload payload, IPayloadContext context) {
+        context.enqueueWork(() -> {
+            if (context.player() instanceof ServerPlayer player) {
+                RingFlightManager.get().requestHover(player, payload.hover());
+            }
+        });
+    }
+
+    private static void handleFlightHoverState(RingFlightHoverStatePayload payload, IPayloadContext context) {
+        context.enqueueWork(() -> RingFlightClientBridge.onHoverState(payload));
     }
 
     private static void handleFlightSet(RingFlightSetPayload payload, IPayloadContext context) {
